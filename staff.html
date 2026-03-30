@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff Portal | Twende Tours</title>
+    <link rel="stylesheet" href="staff.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <header class="staff-header">
+        <div class="logo">
+            <i data-lucide="compass"></i>
+            <span>Twende Tours Staff</span>
+        </div>
+        <nav class="staff-nav">
+            <a href="#" class="nav-link active" onclick="showSection('dashboard')">Dashboard</a>
+            <a href="#" class="nav-link" onclick="showSection('bookings')">Bookings</a>
+            <a href="#" class="nav-link" onclick="showSection('inquiries')">Inquiries</a>
+            <a href="#" class="nav-link" onclick="handleLogout()">Logout</a>
+        </nav>
+    </header>
+
+    <main class="staff-main">
+        <!-- Dashboard -->
+        <section id="dashboard" class="section">
+            <h1>Dashboard</h1>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalBookings">0</div>
+                    <div class="stat-label">Total Bookings</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="pendingBookings">0</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="newInquiries">0</div>
+                    <div class="stat-label">New Inquiries</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Bookings -->
+        <section id="bookings" class="section hidden">
+            <h1>All Bookings</h1>
+            <div id="bookingsTable" class="table-container"></div>
+        </section>
+
+        <!-- Inquiries -->
+        <section id="inquiries" class="section hidden">
+            <h1>Inquiries</h1>
+            <div id="inquiriesList" class="inquiries-list"></div>
+        </section>
+    </main>
+
+    <script src="staff.js"></script>
+</body>
+</html>

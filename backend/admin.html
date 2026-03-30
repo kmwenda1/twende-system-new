@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal | Twende Tours</title>
+    <link rel="stylesheet" href="admin.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <header class="admin-header">
+        <div class="logo">
+            <i data-lucide="shield"></i>
+            <span>Twende Tours Admin</span>
+        </div>
+        <nav class="admin-nav">
+            <a href="#" class="nav-link active" onclick="showSection('dashboard')">Dashboard</a>
+            <a href="#" class="nav-link" onclick="showSection('bookings')">Bookings</a>
+            <a href="#" class="nav-link" onclick="showSection('fleet')">Fleet</a>
+            <a href="#" class="nav-link" onclick="showSection('users')">Users</a>
+            <a href="#" class="nav-link" onclick="showSection('inquiries')">Inquiries</a>
+            <a href="#" class="nav-link logout" onclick="handleLogout()">Logout</a>
+        </nav>
+    </header>
+
+    <main class="admin-main">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="section">
+            <h1>Admin Dashboard</h1>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalBookings">0</div>
+                    <div class="stat-label">Total Bookings</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="pendingBookings">0</div>
+                    <div class="stat-label">Pending Approval</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalRevenue">$0</div>
+                    <div class="stat-label">Total Revenue</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="availableVehicles">0</div>
+                    <div class="stat-label">Available Vehicles</div>
+                </div>
+            </div>
+
+            <div class="recent-activity">
+                <h2>Recent Bookings</h2>
+                <div id="recentBookings" class="bookings-list"></div>
+            </div>
+        </section>
+
+        <!-- Bookings Section -->
+        <section id="bookings" class="section hidden">
+            <h1>Manage Bookings</h1>
+            <div id="allBookings" class="bookings-table"></div>
+        </section>
+
+        <!-- Fleet Section -->
+        <section id="fleet" class="section hidden">
+            <h1>Manage Fleet</h1>
+            <button class="btn-primary" onclick="openAddVehicleModal()">+ Add Vehicle</button>
+            <div id="fleetList" class="fleet-grid"></div>
+        </section>
+
+        <!-- Users Section -->
+        <section id="users" class="section hidden">
+            <h1>Manage Users</h1>
+            <div class="users-container">
+                <div class="user-column">
+                    <h2>Pending Approvals</h2>
+                    <div id="pendingUsers" class="users-list"></div>
+                </div>
+                <div class="user-column">
+                    <h2>All Users</h2>
+                    <div id="allUsers" class="users-list"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Inquiries Section -->
+        <section id="inquiries" class="section hidden">
+            <h1>Manage Inquiries</h1>
+            <div id="inquiriesList" class="inquiries-container"></div>
+        </section>
+    </main>
+
+    <!-- Add Vehicle Modal -->
+    <div id="vehicleModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Vehicle</h2>
+                <button onclick="closeAddVehicleModal()">&times;</button>
+            </div>
+            <form id="addVehicleForm" onsubmit="addVehicle(event)">
+                <div class="form-group">
+                    <label>Vehicle Name</label>
+                    <input type="text" id="vehicleName" required>
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="vehicleType" required>
+                        <option value="4x4">4x4</option>
+                        <option value="Van">Van</option>
+                        <option value="Bus">Bus</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Daily Rate (KES)</label>
+                    <input type="number" id="vehicleRate" required>
+                </div>
+                <div class="form-group">
+                    <label>Seats</label>
+                    <input type="number" id="vehicleSeats" required>
+                </div>
+                <button type="submit" class="btn-primary">Add Vehicle</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 // API Base URL (Railway backend)
-const API_URL = 'https://twende-tours-production.up.railway.app';
+const API_URL = 'https://twende-system-new-production.up.railway.app';
 
 // Initialize icons
 if (typeof lucide !== 'undefined') {

@@ -126,6 +126,30 @@ app.post('/api/mpesa/stkpush', async (req, res) => {
     res.json({ success: true, message: 'STK Push sent' });
 });
 
+// ============ TEMPORARY: Update Admin Password (REMOVE AFTER USE) ============
+app.get('/api/update-admin-password', async (req, res) => {
+    try {
+        // Hash password "123" with bcrypt
+        const hashedPassword = await bcrypt.hash('123', 10);
+        
+        // Update admin user password
+        await query(
+            'UPDATE users SET password = ? WHERE email = ?',
+            [hashedPassword, 'admin@twende.com']
+        );
+        
+        res.json({ 
+            success: true, 
+            message: 'Admin password updated successfully!',
+            hashedPassword: hashedPassword,
+            note: 'REMOVE this route from server.js after use!'
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// ============ END TEMPORARY ROUTE ============
+
 // Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '0.0.0.0', () => {

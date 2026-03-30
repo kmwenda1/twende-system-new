@@ -1,5 +1,5 @@
-// API Base URL
-const API_BASE_URL = 'twende-system-new-production.up.railway.app';
+// Add https:// at the beginning
+const API_BASE_URL = 'https://twende-system-new-production.up.railway.app';
 
 // Get fleet vehicles
 async function getFleet() {

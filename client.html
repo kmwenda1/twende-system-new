@@ -11,7 +11,9 @@
     <!-- Sidebar -->
     <aside class="sidebar">
         <div class="logo">
-            <i data-lucide="compass"></i>
+            <div class="logo-icon">
+                <i data-lucide="compass"></i>
+            </div>
             <span>Twende Tours</span>
         </div>
         <nav>
@@ -24,13 +26,24 @@
             <a href="#" class="nav-link" onclick="showSection('bookings')">
                 <i data-lucide="calendar"></i> My Bookings
             </a>
+            <a href="#" class="nav-link" onclick="showSection('inquiries')">
+                <i data-lucide="message-square"></i> Inquiries
+            </a>
             <a href="#" class="nav-link" onclick="showSection('profile')">
                 <i data-lucide="user"></i> Profile
             </a>
         </nav>
         <div class="user-info">
-            <span id="userName">Client</span>
-            <button onclick="logout()"><i data-lucide="log-out"></i> Sign Out</button>
+            <div class="user-avatar">
+                <i data-lucide="user"></i>
+            </div>
+            <div class="user-details">
+                <span id="userName" class="user-name">Client</span>
+                <span class="user-role">Explorer</span>
+            </div>
+            <button onclick="logout()" class="logout-btn">
+                <i data-lucide="log-out"></i> Sign Out
+            </button>
         </div>
     </aside>
 
@@ -38,45 +51,117 @@
     <main class="main-content">
         <!-- Dashboard -->
         <section id="dashboard" class="section">
-            <h1>Welcome Back!</h1>
+            <div class="section-header">
+                <h1>Jambo, <span id="dashUserName" class="highlight">Client</span>! 👋</h1>
+                <p class="subtitle">Your safari adventures at a glance</p>
+            </div>
+            
             <div class="stats">
                 <div class="stat-card">
-                    <div class="stat-number" id="totalTrips">0</div>
-                    <div class="stat-label">Total Trips</div>
+                    <div class="stat-icon">
+                        <i data-lucide="calendar-check"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="activeTrips">0</div>
+                        <div class="stat-label">Active Trips</div>
+                    </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" id="upcomingTrips">0</div>
-                    <div class="stat-label">Upcoming</div>
+                    <div class="stat-icon">
+                        <i data-lucide="map-pin"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="totalTrips">0</div>
+                        <div class="stat-label">Total Safaris</div>
+                    </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" id="totalSpent">$0</div>
-                    <div class="stat-label">Total Spent</div>
+                    <div class="stat-icon">
+                        <i data-lucide="check-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-number" id="completedTrips">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
                 </div>
             </div>
-            <button class="btn-primary" onclick="openBookingModal()">
-                <i data-lucide="plus"></i> Book New Safari
-            </button>
+
+            <div class="quick-actions">
+                <button class="btn-primary btn-large" onclick="showSection('fleet')">
+                    <i data-lucide="search"></i> Browse Fleet
+                </button>
+                <button class="btn-secondary btn-large" onclick="openBookingModal()">
+                    <i data-lucide="plus"></i> Request New Safari
+                </button>
+            </div>
+
+            <div class="recent-section">
+                <h2>Your Schedule</h2>
+                <div id="recentBookings" class="schedule-container">
+                    <div class="empty-state">
+                        <i data-lucide="map-pin" class="empty-icon"></i>
+                        <p>No safaris booked yet. Browse the fleet to get started!</p>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- Fleet -->
         <section id="fleet" class="section hidden">
-            <h1>Our Fleet</h1>
+            <div class="section-header">
+                <h1>Our Fleet</h1>
+                <p class="subtitle">Discover the perfect vehicle for your adventure</p>
+            </div>
             <div id="fleetGrid" class="fleet-grid"></div>
         </section>
 
         <!-- Bookings -->
         <section id="bookings" class="section hidden">
-            <h1>My Bookings</h1>
+            <div class="section-header">
+                <h1>My Bookings</h1>
+                <p class="subtitle">Track and manage your safari reservations</p>
+            </div>
             <div id="bookingsList" class="bookings-list"></div>
+        </section>
+
+        <!-- Inquiries -->
+        <section id="inquiries" class="section hidden">
+            <div class="section-header">
+                <h1>Inquiries</h1>
+                <p class="subtitle">Have questions? We're here to help!</p>
+            </div>
+            <div class="inquiry-form-container">
+                <button class="btn-primary" onclick="openInquiryModal()">
+                    <i data-lucide="plus"></i> New Inquiry
+                </button>
+            </div>
+            <div id="inquiriesList" class="inquiries-list"></div>
         </section>
 
         <!-- Profile -->
         <section id="profile" class="section hidden">
-            <h1>My Profile</h1>
+            <div class="section-header">
+                <h1>My Profile</h1>
+                <p class="subtitle">Manage your account settings</p>
+            </div>
             <div class="profile-card">
-                <p><strong>Name:</strong> <span id="profileName"></span></p>
-                <p><strong>Email:</strong> <span id="profileEmail"></span></p>
-                <p><strong>Phone:</strong> <span id="profilePhone"></span></p>
+                <div class="profile-header">
+                    <div class="profile-avatar-large">
+                        <i data-lucide="user"></i>
+                    </div>
+                    <h2 id="profileName">Client Name</h2>
+                    <p id="profileEmail" class="email">email@example.com</p>
+                </div>
+                <div class="profile-details">
+                    <div class="detail-row">
+                        <i data-lucide="phone"></i>
+                        <span id="profilePhone">+254 700 000 000</span>
+                    </div>
+                    <div class="detail-row">
+                        <i data-lucide="calendar"></i>
+                        <span>Member since 2024</span>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
@@ -85,29 +170,60 @@
     <div id="bookingModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Book Safari</h2>
+                <h2>Request New Safari</h2>
                 <button type="button" onclick="closeBookingModal()" class="close-btn">&times;</button>
             </div>
             <form id="bookingForm" onsubmit="submitBooking(event)">
                 <div class="form-group">
-                    <label>Vehicle</label>
+                    <label>Select Vehicle</label>
                     <select id="vehicleSelect" required>
-                        <option value="">Select a vehicle</option>
+                        <option value="">Choose a vehicle...</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Destination</label>
-                    <input type="text" id="destination" required placeholder="e.g., Masai Mara">
+                    <input type="text" id="destination" required placeholder="e.g., Masai Mara, Amboseli">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Start Date</label>
+                        <input type="date" id="startDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>End Date</label>
+                        <input type="date" id="endDate" required>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>Start Date</label>
-                    <input type="date" id="startDate" required>
+                    <label>Number of Travelers</label>
+                    <input type="number" id="travelers" min="1" required placeholder="How many people?">
                 </div>
                 <div class="form-group">
-                    <label>Travelers</label>
-                    <input type="number" id="travelers" min="1" required>
+                    <label>Special Requests (Optional)</label>
+                    <textarea id="notes" rows="3" placeholder="Any special requirements..."></textarea>
                 </div>
-                <button type="submit" class="btn-primary">Submit Booking</button>
+                <button type="submit" class="btn-primary btn-full">Submit Request</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Inquiry Modal -->
+    <div id="inquiryModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Submit Inquiry</h2>
+                <button type="button" onclick="closeInquiryModal()" class="close-btn">&times;</button>
+            </div>
+            <form id="inquiryForm" onsubmit="submitInquiry(event)">
+                <div class="form-group">
+                    <label>Subject</label>
+                    <input type="text" id="inquirySubject" required placeholder="What is this about?">
+                </div>
+                <div class="form-group">
+                    <label>Message</label>
+                    <textarea id="inquiryMessage" rows="5" required placeholder="Tell us more about your inquiry..."></textarea>
+                </div>
+                <button type="submit" class="btn-primary btn-full">Send Inquiry</button>
             </form>
         </div>
     </div>

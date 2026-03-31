@@ -8,49 +8,165 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-    <header class="staff-header">
+    <!-- Sidebar -->
+    <aside class="sidebar">
         <div class="logo">
-            <i data-lucide="compass"></i>
-            <span>Twende Tours Staff</span>
+            <div class="logo-icon">
+                <i data-lucide="compass"></i>
+            </div>
+            <div class="logo-text">
+                <span class="brand">Twende</span>
+                <span class="tagline">Tours & Safaris</span>
+            </div>
         </div>
-        <nav class="staff-nav">
-            <a href="#" class="nav-link active" onclick="showSection('dashboard')">Dashboard</a>
-            <a href="#" class="nav-link" onclick="showSection('bookings')">Bookings</a>
-            <a href="#" class="nav-link" onclick="showSection('inquiries')">Inquiries</a>
-            <a href="#" class="nav-link" onclick="handleLogout()">Logout</a>
-        </nav>
-    </header>
 
-    <main class="staff-main">
+        <div class="user-badge">
+            <i data-lucide="shield"></i>
+            <span>Operations</span>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="#" class="nav-link active" onclick="showSection('dashboard')">
+                <i data-lucide="layout-grid"></i> Dashboard
+            </a>
+            <a href="#" class="nav-link" onclick="showSection('inbox')">
+                <i data-lucide="inbox"></i> Social Inbox
+            </a>
+            <a href="#" class="nav-link" onclick="showSection('fleet')">
+                <i data-lucide="wrench"></i> Fleet Control
+            </a>
+            <a href="#" class="nav-link" onclick="showSection('bookings')">
+                <i data-lucide="calendar-check"></i> Bookings
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">
+                    <i data-lucide="user"></i>
+                </div>
+                <div class="user-details">
+                    <span id="staffName" class="name">Staff</span>
+                    <span class="role">staff</span>
+                </div>
+            </div>
+            <button onclick="logout()" class="logout-btn">
+                <i data-lucide="log-out"></i> Sign Out
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
         <!-- Dashboard -->
         <section id="dashboard" class="section">
-            <h1>Dashboard</h1>
+            <div class="section-header">
+                <h1>Jambo, <span id="dashStaffName" class="highlight">Staff</span>! 👋</h1>
+                <p class="subtitle">Your safari adventures at a glance</p>
+            </div>
+
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-number" id="totalBookings">0</div>
-                    <div class="stat-label">Total Bookings</div>
+                    <div class="stat-label">Active Trips</div>
+                    <div class="stat-value" id="activeTrips">0</div>
+                    <i data-lucide="calendar" class="stat-icon"></i>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" id="pendingBookings">0</div>
-                    <div class="stat-label">Pending</div>
+                    <div class="stat-label">Total Safaris</div>
+                    <div class="stat-value" id="totalSafaris">0</div>
+                    <i data-lucide="map-pin" class="stat-icon"></i>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" id="newInquiries">0</div>
-                    <div class="stat-label">New Inquiries</div>
+                    <div class="stat-label">Completed</div>
+                    <div class="stat-value" id="completedTrips">0</div>
+                    <i data-lucide="check-circle" class="stat-icon"></i>
+                </div>
+            </div>
+
+            <div class="recent-section">
+                <h2>Your Schedule</h2>
+                <div id="recentBookings" class="schedule-container">
+                    <div class="empty-state">
+                        <i data-lucide="map-pin" class="empty-icon"></i>
+                        <p>No safaris booked yet. Browse the fleet to get started!</p>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- Bookings -->
-        <section id="bookings" class="section hidden">
-            <h1>All Bookings</h1>
-            <div id="bookingsTable" class="table-container"></div>
+        <!-- Social Inbox -->
+        <section id="inbox" class="section hidden">
+            <div class="section-header">
+                <h1>Social Inbox</h1>
+                <p class="subtitle">Client safari requests and inquiries</p>
+            </div>
+            <div id="inboxList" class="inbox-list">
+                <div class="empty-state">
+                    <i data-lucide="inbox"></i>
+                    <p>No inquiries yet.</p>
+                </div>
+            </div>
         </section>
 
-        <!-- Inquiries -->
-        <section id="inquiries" class="section hidden">
-            <h1>Inquiries</h1>
-            <div id="inquiriesList" class="inquiries-list"></div>
+        <!-- Fleet Control -->
+        <section id="fleet" class="section hidden">
+            <div class="section-header">
+                <h1>Fleet Control Center</h1>
+                <p class="subtitle">Manage vehicle statuses</p>
+            </div>
+            <div id="fleetList" class="fleet-list"></div>
+        </section>
+
+        <!-- Bookings -->
+        <section id="bookings" class="section hidden">
+            <div class="section-header">
+                <h1>Booking Engine</h1>
+                <p class="subtitle">Create and manage trip bookings</p>
+            </div>
+
+            <div class="card">
+                <h2><i data-lucide="plus-circle"></i> New Booking</h2>
+                <form id="bookingForm" onsubmit="createBooking(event)" class="booking-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Vehicle</label>
+                            <select id="bookingVehicle" required>
+                                <option value="">Select vehicle</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Client Name</label>
+                            <input type="text" id="bookingClient" required placeholder="Client full name">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Destination</label>
+                            <input type="text" id="bookingDestination" required placeholder="e.g. Masai Mara">
+                        </div>
+                        <div class="form-group">
+                            <label>Travelers</label>
+                            <input type="number" id="bookingTravelers" min="1" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Start Date</label>
+                            <input type="date" id="bookingStart" required>
+                        </div>
+                        <div class="form-group">
+                            <label>End Date</label>
+                            <input type="date" id="bookingEnd" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary">Confirm Booking</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2><i data-lucide="calendar"></i> All Bookings</h2>
+                <div id="bookingsList" class="bookings-table"></div>
+            </div>
         </section>
     </main>
 

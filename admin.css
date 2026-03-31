@@ -100,6 +100,7 @@ body {
     border-radius: 8px;
     transition: all 0.3s;
     font-weight: 500;
+    position: relative;
 }
 
 .nav-link:hover, .nav-link.active {
@@ -108,6 +109,20 @@ body {
 }
 
 .nav-link i { width: 20px; height: 20px; }
+
+.badge {
+    background: var(--gold);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 8px;
+}
+
+.badge.hidden {
+    display: none;
+}
 
 .sidebar-footer {
     padding-top: 24px;
@@ -321,12 +336,28 @@ body {
     color: #92400e;
 }
 
+.status-repair {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
 .status-select {
     padding: 8px 12px;
     border: 1px solid var(--border);
     border-radius: 6px;
     font-size: 0.9rem;
     cursor: pointer;
+    background: white;
+}
+
+.status-select:focus {
+    outline: none;
+    border-color: var(--gold);
 }
 
 /* Forms */
@@ -384,6 +415,128 @@ body {
 .btn-primary:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
+}
+
+/* Staff Approvals */
+.staff-approvals-list,
+.approved-staff-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.staff-request-card {
+    background: var(--gray-light);
+    padding: 20px;
+    border-radius: 12px;
+    border-left: 4px solid var(--gold);
+}
+
+.staff-request-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.staff-request-info {
+    flex: 1;
+}
+
+.staff-name {
+    font-weight: 600;
+    color: var(--navy);
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+}
+
+.staff-email {
+    color: var(--gray);
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.staff-details {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+    color: var(--gray);
+    flex-wrap: wrap;
+}
+
+.staff-detail {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.staff-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.btn-approve {
+    padding: 8px 16px;
+    background: var(--green);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s;
+}
+
+.btn-approve:hover {
+    background: #059669;
+    transform: translateY(-1px);
+}
+
+.btn-reject {
+    padding: 8px 16px;
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.3s;
+}
+
+.btn-reject:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+}
+
+.approved-staff-card {
+    background: var(--white);
+    padding: 16px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-left: 4px solid var(--green);
+}
+
+.approved-staff-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.approved-badge {
+    padding: 4px 12px;
+    background: #d1fae5;
+    color: #065f46;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
 }
 
 /* Users List */

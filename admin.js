@@ -1,6 +1,12 @@
 const API_URL = 'https://twende-system-new-production.up.railway.app';
 let currentUser = null;
-let allData = {};
+let allData = {
+    bookings: [],
+    fleet: [],
+    users: [],
+    inquiries: [],
+    pendingStaff: []
+};
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -20,29 +26,41 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Load all data
 async function loadAllData() {
     try {
-        const [bookings, fleet, users, inquiries] = await Promise.all([
-            fetch(`${API_URL}/api/bookings`).then(r => r.json()),
-            fetch(`${API_URL}/api/fleet`).then(r => r.json()),
-            fetch(`${API_URL}/api/users`).then(r => r.json()),
-            fetch(`${API_URL}/api/inquiries`).then(r => r.json())
+        const [bookingsRes, fleetRes, usersRes, inquiriesRes, pendingStaffRes] = await Promise.all([
+            fetch(`${API_URL}/api/bookings`),
+            fetch(`${API_URL}/api/fleet`),
+            fetch(`${API_URL}/api/users`),
+            fetch(`${API_URL}/api/inquiries`),
+            fetch(`${API_URL}/api/staff/pending`)
         ]);
         
+        const bookingsData = await bookingsRes.json();
+        const fleetData = await fleetRes.json();
+        const usersData = await usersRes.json();
+        const inquiriesData = await inquiriesRes.json();
+        const pendingStaffData = await pendingStaffRes.json();
+        
         allData = {
-            bookings: bookings.data || [],
-            fleet: fleet.data || [],
-            users: users.data || [],
-            inquiries: inquiries.data || []
+            bookings: bookingsData.data || bookingsData || [],
+            fleet: fleetData.data || fleetData || [],
+            users: usersData.data || usersData || [],
+            inquiries: inquiriesData.data || inquiriesData || [],
+            pendingStaff: pendingStaffData.data || pendingStaffData || []
         };
+        
+        console.log('Loaded ', allData);
         
         updateDashboard();
         loadFleet();
         loadUsers();
         loadInquiries();
         loadBookings();
+        loadStaffApprovals();
         
         if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch (err) {
-        console.error('Error loading data:', err);
+        console.error('Error loading ', err);
+        alert('Error loading data. Please refresh the page.');
     }
 }
 
@@ -52,25 +70,22 @@ function updateDashboard() {
     
     const revenue = bookings
         .filter(b => b.status === 'Confirmed' || b.status === 'Completed')
-        .reduce((sum, b) => sum + (b.amount || 0), 0);
+        .reduce((sum, b) => sum + (parseFloat(b.amount) || 0), 0);
     
     const activeFleet = fleet.filter(v => v.status === 'Booked').length;
     const availableFleet = fleet.filter(v => v.status === 'Available').length;
     const clients = users.filter(u => u.role === 'client').length;
     
-    // Dashboard
     document.getElementById('dashRevenue').textContent = `$${revenue.toLocaleString()}`;
     document.getElementById('dashActiveFleet').textContent = activeFleet;
     document.getElementById('dashAvailableFleet').textContent = availableFleet;
     document.getElementById('dashClients').textContent = clients;
     
-    // Intelligence
     document.getElementById('intelRevenue').textContent = `$${revenue.toLocaleString()}`;
     document.getElementById('intelActiveFleet').textContent = activeFleet;
     document.getElementById('intelAvailableFleet').textContent = availableFleet;
     document.getElementById('intelClients').textContent = clients;
     
-    // Recent activity
     loadRecentActivity();
 }
 
@@ -103,15 +118,15 @@ function loadRecentActivity() {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-// Load fleet - UPDATED
+// Load fleet
 function loadFleet() {
     const container = document.getElementById('fleetList');
     
-    if (allData.fleet.length === 0) {
+    if (!allData.fleet || allData.fleet.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <i data-lucide="truck"></i>
-                <p>No vehicles in fleet</p>
+                <p>No vehicles in fleet. Add some vehicles first!</p>
             </div>
         `;
         return;
@@ -120,16 +135,16 @@ function loadFleet() {
     container.innerHTML = allData.fleet.map(v => `
         <div class="fleet-item">
             <div class="fleet-info">
-                <div class="fleet-name">${v.name}</div>
-                <div class="fleet-details">${v.type} · $${v.rate}/day</div>
+                <div class="fleet-name">${v.name || 'Unknown Vehicle'}</div>
+                <div class="fleet-details">${v.type || 'N/A'} · $${v.rate || 0}/day</div>
             </div>
             <div class="fleet-status">
-                <span class="status-badge status-${v.status?.toLowerCase()}">${v.status}</span>
+                <span class="status-badge status-${(v.status || 'available').toLowerCase()}">${v.status || 'Available'}</span>
                 <select class="status-select" onchange="updateFleetStatus(${v.id}, this.value)">
-                    <option value="Available" ${v.status === 'Available' ? 'selected' : ''}>Available</option>
-                    <option value="Booked" ${v.status === 'Booked' ? 'selected' : ''}>Booked</option>
-                    <option value="Maintenance" ${v.status === 'Maintenance' ? 'selected' : ''}>Maintenance</option>
-                    <option value="Repair" ${v.status === 'Repair' ? 'selected' : ''}>Repair</option>
+                    <option value="Available" ${(v.status === 'Available') ? 'selected' : ''}>Available</option>
+                    <option value="Booked" ${(v.status === 'Booked') ? 'selected' : ''}>Booked</option>
+                    <option value="Maintenance" ${(v.status === 'Maintenance') ? 'selected' : ''}>Maintenance</option>
+                    <option value="Repair" ${(v.status === 'Repair') ? 'selected' : ''}>Repair</option>
                 </select>
             </div>
         </div>
@@ -141,6 +156,8 @@ function loadFleet() {
 // Update fleet status
 async function updateFleetStatus(vehicleId, status) {
     try {
+        console.log(`Updating vehicle ${vehicleId} to ${status}`);
+        
         const response = await fetch(`${API_URL}/api/fleet/${vehicleId}/status`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -148,23 +165,29 @@ async function updateFleetStatus(vehicleId, status) {
         });
         
         const result = await response.json();
+        console.log('Update result:', result);
         
         if (result.success) {
-            await loadAllData();
+            // Update local data
+            const vehicle = allData.fleet.find(v => v.id === vehicleId);
+            if (vehicle) {
+                vehicle.status = status;
+            }
+            alert(`Vehicle status updated to ${status}`);
         } else {
             alert('Failed to update fleet status');
         }
     } catch (err) {
         console.error('Error updating fleet:', err);
-        alert('Connection error');
+        alert('Connection error. Please try again.');
     }
 }
 
-// Load users - UPDATED
+// Load users
 function loadUsers() {
     const container = document.getElementById('usersList');
     
-    if (allData.users.length === 0) {
+    if (!allData.users || allData.users.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <i data-lucide="users"></i>
@@ -177,40 +200,162 @@ function loadUsers() {
     container.innerHTML = allData.users.map(u => `
         <div class="user-item">
             <div class="user-item-info">
-                <div class="user-item-name">${u.name}</div>
-                <div class="user-item-role">${u.role}</div>
+                <div class="user-item-name">${u.name || 'Unknown User'}</div>
+                <div class="user-item-role">${u.role || 'client'} ${u.is_approved ? '✓' : '⏳'}</div>
             </div>
-            <div class="user-item-date">${new Date(u.created_at).toLocaleDateString()}</div>
+            <div class="user-item-date">${u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}</div>
         </div>
     `).join('');
+}
+
+// Load staff approvals - NEW
+function loadStaffApprovals() {
+    const pendingContainer = document.getElementById('pendingStaffList');
+    const approvedContainer = document.getElementById('approvedStaffList');
+    const badge = document.getElementById('pendingBadge');
+    
+    // Update badge count
+    const pendingCount = allData.pendingStaff?.length || 0;
+    if (pendingCount > 0) {
+        badge.textContent = pendingCount;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+    
+    // Load pending staff
+    if (!allData.pendingStaff || allData.pendingStaff.length === 0) {
+        pendingContainer.innerHTML = `
+            <div class="empty-state">
+                <i data-lucide="check-circle"></i>
+                <p>No pending staff requests</p>
+            </div>
+        `;
+    } else {
+        pendingContainer.innerHTML = allData.pendingStaff.map(staff => `
+            <div class="staff-request-card">
+                <div class="staff-request-header">
+                    <div class="staff-request-info">
+                        <div class="staff-name">${staff.name}</div>
+                        <div class="staff-email">${staff.email}</div>
+                    </div>
+                    <span class="status-badge status-pending">Pending</span>
+                </div>
+                <div class="staff-details">
+                    <div class="staff-detail">
+                        <i data-lucide="mail" width="16"></i>
+                        <span>${staff.email}</span>
+                    </div>
+                    ${staff.phone ? `
+                        <div class="staff-detail">
+                            <i data-lucide="phone" width="16"></i>
+                            <span>${staff.phone}</span>
+                        </div>
+                    ` : ''}
+                    <div class="staff-detail">
+                        <i data-lucide="calendar" width="16"></i>
+                        <span>Requested ${new Date(staff.created_at).toLocaleDateString()}</span>
+                    </div>
+                </div>
+                <div class="staff-actions">
+                    <button class="btn-approve" onclick="approveStaff(${staff.id}, true)">
+                        <i data-lucide="check" width="16"></i> Approve
+                    </button>
+                    <button class="btn-reject" onclick="approveStaff(${staff.id}, false)">
+                        <i data-lucide="x" width="16"></i> Reject
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // Load approved staff
+    const approvedStaff = allData.users?.filter(u => u.role === 'staff' && u.is_approved) || [];
+    
+    if (!approvedStaff || approvedStaff.length === 0) {
+        approvedContainer.innerHTML = `
+            <div class="empty-state">
+                <i data-lucide="users"></i>
+                <p>No approved staff yet</p>
+            </div>
+        `;
+    } else {
+        approvedContainer.innerHTML = approvedStaff.map(staff => `
+            <div class="approved-staff-card">
+                <div class="approved-staff-info">
+                    <div class="user-avatar" style="width: 40px; height: 40px;">
+                        <i data-lucide="user" style="width: 20px; height: 20px;"></i>
+                    </div>
+                    <div>
+                        <div class="user-item-name">${staff.name}</div>
+                        <div class="user-item-role">${staff.email}</div>
+                    </div>
+                </div>
+                <span class="approved-badge">Approved</span>
+            </div>
+        `).join('');
+    }
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Approve or reject staff
+async function approveStaff(staffId, approved) {
+    try {
+        const action = approved ? 'approve' : 'reject';
+        const confirmMsg = approved ? 
+            'Approve this staff member? They will be able to login.' : 
+            'Reject this staff request?';
+        
+        if (!confirm(confirmMsg)) return;
+        
+        const response = await fetch(`${API_URL}/api/staff/${staffId}/approve`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ approved })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`Staff ${approved ? 'approved' : 'rejected'} successfully!`);
+            await loadAllData(); // Reload to update lists
+        } else {
+            alert(`Failed to ${action} staff`);
+        }
+    } catch (err) {
+        console.error('Staff approval error:', err);
+        alert('Connection error. Please try again.');
+    }
 }
 
 // Load inquiries
 function loadInquiries() {
     const container = document.getElementById('inboxList');
     
-    if (allData.inquiries.length === 0) {
+    if (!allData.inquiries || allData.inquiries.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <i data-lucide="inbox"></i>
                 <p>No inquiries yet.</p>
             </div>
         `;
-    } else {
-        container.innerHTML = allData.inquiries.map(i => `
-            <div class="inquiry-item">
-                <div class="inquiry-header">
-                    <div class="inquiry-client">${i.client_name}</div>
-                    <div class="inquiry-date">${new Date(i.created_at).toLocaleDateString()}</div>
-                </div>
-                <div class="inquiry-message">${i.notes || i.subject || 'No message'}</div>
-                <div class="inquiry-contact">
-                    <strong>Email:</strong> ${i.client_email} · 
-                    <strong>Phone:</strong> ${i.client_phone || 'N/A'}
-                </div>
-            </div>
-        `).join('');
+        return;
     }
+    
+    container.innerHTML = allData.inquiries.map(i => `
+        <div class="inquiry-item">
+            <div class="inquiry-header">
+                <div class="inquiry-client">${i.client_name || 'Unknown'}</div>
+                <div class="inquiry-date">${i.created_at ? new Date(i.created_at).toLocaleDateString() : 'N/A'}</div>
+            </div>
+            <div class="inquiry-message">${i.notes || i.subject || 'No message'}</div>
+            <div class="inquiry-contact">
+                <strong>Email:</strong> ${i.client_email || 'N/A'} · 
+                <strong>Phone:</strong> ${i.client_phone || 'N/A'}
+            </div>
+        </div>
+    `).join('');
 }
 
 // Load bookings
@@ -218,46 +363,47 @@ function loadBookings() {
     const container = document.getElementById('bookingsList');
     const vehicleSelect = document.getElementById('bookingVehicle');
     
-    // Populate vehicle dropdown
+    if (!vehicleSelect) return;
+    
     vehicleSelect.innerHTML = '<option value="">Select vehicle</option>' +
-        allData.fleet.filter(v => v.status === 'Available').map(v => 
+        (allData.fleet || []).filter(v => v.status === 'Available').map(v => 
             `<option value="${v.id}">${v.name} - $${v.rate}/day</option>`
         ).join('');
     
-    // Show bookings table
-    if (allData.bookings.length === 0) {
+    if (!allData.bookings || allData.bookings.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <i data-lucide="calendar"></i>
                 <p>No bookings yet</p>
             </div>
         `;
-    } else {
-        container.innerHTML = `
-            <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                    <tr style="text-align: left; border-bottom: 2px solid var(--border);">
-                        <th style="padding: 12px;">Client</th>
-                        <th style="padding: 12px;">Destination</th>
-                        <th style="padding: 12px;">Dates</th>
-                        <th style="padding: 12px;">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${allData.bookings.map(b => `
-                        <tr style="border-bottom: 1px solid var(--border);">
-                            <td style="padding: 12px;">${b.user_id || 'N/A'}</td>
-                            <td style="padding: 12px;">${b.destination}</td>
-                            <td style="padding: 12px;">${b.start_date}</td>
-                            <td style="padding: 12px;">
-                                <span class="status-badge status-${b.status?.toLowerCase()}">${b.status}</span>
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        `;
+        return;
     }
+    
+    container.innerHTML = `
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align: left; border-bottom: 2px solid var(--border);">
+                    <th style="padding: 12px;">Client</th>
+                    <th style="padding: 12px;">Destination</th>
+                    <th style="padding: 12px;">Dates</th>
+                    <th style="padding: 12px;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${allData.bookings.map(b => `
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 12px;">${b.user_id || 'N/A'}</td>
+                        <td style="padding: 12px;">${b.destination || 'N/A'}</td>
+                        <td style="padding: 12px;">${b.start_date || 'N/A'}</td>
+                        <td style="padding: 12px;">
+                            <span class="status-badge status-${(b.status || 'pending').toLowerCase()}">${b.status || 'Pending'}</span>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
 }
 
 // Create booking

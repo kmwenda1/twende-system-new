@@ -64,7 +64,7 @@ app.post('/api/register', async (req, res) => {
         
         const hashedPassword = await bcrypt.hash(password, 10);
         const userRole = role || 'client';
-        const isApproved = userRole === 'client';
+        const isApproved = userRole === 'client'; // Auto-approve clients, staff need admin approval
         
         await query(
             'INSERT INTO users (name, email, password, role, phone, interest, is_approved) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -95,6 +95,7 @@ app.post('/api/login', async (req, res) => {
             return res.json({ success: false, message: 'Invalid credentials' });
         }
 
+        // Check if staff user is approved
         if (user.role === 'staff' && !user.is_approved) {
             return res.json({ success: false, message: 'Account pending approval' });
         }
@@ -114,14 +115,53 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ================= USERS =================
-// ✅ NEW: Get all users endpoint
 app.get('/api/users', async (req, res) => {
     try {
-        const users = await query('SELECT id, name, email, role, phone, created_at FROM users ORDER BY created_at DESC');
-        res.json({ success: true, data: users });
+        const users = await query('SELECT id, name, email, role, phone, created_at, is_approved FROM users ORDER BY created_at DESC');
+        res.json({ success: true,  users });
     } catch (err) {
         console.error('USERS ERROR:', err);
         res.status(500).json({ error: err.message });
+    }
+});
+
+// ================= STAFF APPROVAL =================
+// Get pending staff approvals
+app.get('/api/staff/pending', async (req, res) => {
+    try {
+        const staff = await query(
+            'SELECT id, name, email, phone, created_at FROM users WHERE role = "staff" AND is_approved = FALSE ORDER BY created_at DESC'
+        );
+        res.json({ success: true, data: staff });
+    } catch (err) {
+        console.error('PENDING STAFF ERROR:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Approve or reject staff member
+app.put('/api/staff/:id/approve', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { approved } = req.body; // true or false
+        
+        console.log(`Updating staff ${id} approval to: ${approved}`);
+        
+        const result = await query(
+            'UPDATE users SET is_approved = ? WHERE id = ? AND role = "staff"', 
+            [approved ? 1 : 0, id]
+        );
+        
+        console.log('Approval update result:', result);
+        
+        res.json({ 
+            success: true, 
+            message: approved ? 'Staff approved successfully' : 'Staff rejected',
+            result 
+        });
+    } catch (err) {
+        console.error('STAFF APPROVAL ERROR:', err);
+        res.status(500).json({ error: err.message, success: false });
     }
 });
 
@@ -159,7 +199,7 @@ app.put('/api/fleet/:id/status', async (req, res) => {
 app.get('/api/bookings', async (req, res) => {
     try {
         const bookings = await query('SELECT * FROM bookings ORDER BY created_at DESC');
-        res.json({ success: true, data: bookings });
+        res.json({ success: true,  bookings });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -194,7 +234,7 @@ app.put('/api/bookings/:id/status', async (req, res) => {
 app.get('/api/inquiries', async (req, res) => {
     try {
         const inquiries = await query('SELECT * FROM inquiries ORDER BY created_at DESC');
-        res.json({ success: true, data: inquiries });
+        res.json({ success: true,  inquiries });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

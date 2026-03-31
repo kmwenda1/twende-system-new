@@ -29,6 +29,10 @@
             <a href="#" class="nav-link active" onclick="showSection('dashboard')">
                 <i data-lucide="layout-grid"></i> Dashboard
             </a>
+            <a href="#" class="nav-link" onclick="showSection('staff-approvals')">
+                <i data-lucide="user-check"></i> Staff Approvals
+                <span id="pendingBadge" class="badge hidden">0</span>
+            </a>
             <a href="#" class="nav-link" onclick="showSection('intelligence')">
                 <i data-lucide="bar-chart-3"></i> Intelligence
             </a>
@@ -102,6 +106,24 @@
                         <p>No recent activity</p>
                     </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- Staff Approvals -->
+        <section id="staff-approvals" class="section hidden">
+            <div class="section-header">
+                <h1>Staff Approvals</h1>
+                <p class="subtitle">Review and approve staff account requests</p>
+            </div>
+            
+            <div class="card">
+                <h2><i data-lucide="user-check"></i> Pending Staff Requests</h2>
+                <div id="pendingStaffList" class="staff-approvals-list"></div>
+            </div>
+            
+            <div class="card">
+                <h2><i data-lucide="users"></i> Approved Staff</h2>
+                <div id="approvedStaffList" class="approved-staff-list"></div>
             </div>
         </section>
 

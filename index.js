@@ -1,4 +1,4 @@
-// API Base URL (Railway backend)
+// API Base URL
 const API_URL = 'https://twende-system-new-production.up.railway.app';
 
 // Initialize icons
@@ -6,95 +6,106 @@ if (typeof lucide !== 'undefined') {
     lucide.createIcons();
 }
 
+// Show/hide forms
+function showRegister() {
+    document.getElementById('loginForm').classList.add('hidden');
+    document.getElementById('registerForm').classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function showLogin() {
+    document.getElementById('registerForm').classList.add('hidden');
+    document.getElementById('loginForm').classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
 // Handle login
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
+async function handleLogin(e) {
     e.preventDefault();
     
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    const errorDiv = document.getElementById('errorMessage');
-    const submitBtn = document.querySelector('#loginForm button[type="submit"]');
-    
-    // Clear previous error
-    errorDiv.textContent = '';
-    errorDiv.style.display = 'none';
-    
-    // Simple validation
-    if (!email || !password) {
-        errorDiv.textContent = 'Please enter both email and password';
-        errorDiv.style.display = 'block';
-        return;
-    }
-    
-    // Show loading state
-    const originalBtnText = submitBtn.textContent;
-    submitBtn.textContent = 'Signing in...';
-    submitBtn.disabled = true;
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
     
     try {
         const response = await fetch(`${API_URL}/api/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-            // Add timeout to prevent hanging
-            signal: AbortSignal.timeout(10000)
+            body: JSON.stringify({ email, password })
         });
-
-        console.log("Response status:", response.status);
-        const result = await response.json();
-        console.log("Response data:", result);
         
-        if (response.ok && result.success) {
-            // Save user to session
+        const result = await response.json();
+        
+        if (result.success) {
             sessionStorage.setItem('twende_user', JSON.stringify(result.user));
             
-            // Route based on role
             if (result.role === 'admin' || result.role === 'staff') {
                 window.location.href = 'staff.html';
             } else {
                 window.location.href = 'client.html';
             }
         } else {
-            errorDiv.textContent = result.message || result.error || 'Invalid credentials';
-            errorDiv.style.display = 'block';
+            alert(result.message || 'Login failed');
         }
-
     } catch (error) {
-        console.error("Fetch error:", error);
-        
-        if (error.name === 'TimeoutError') {
-            errorDiv.textContent = 'Request timed out. Check your connection.';
-        } else {
-            errorDiv.textContent = 'Server error. Please try again later.';
-        }
-        errorDiv.style.display = 'block';
-        
-    } finally {
-        // Restore button state
-        submitBtn.textContent = originalBtnText;
-        submitBtn.disabled = false;
+        alert('Connection error. Please try again.');
     }
-});
+}
 
-// Check if already logged in on page load
-document.addEventListener('DOMContentLoaded', () => {
-    const user = sessionStorage.getItem('twende_user');
+// Handle registration
+async function handleRegister(e) {
+    e.preventDefault();
     
-    if (user) {
-        try {
-            const userData = JSON.parse(user);
-            
-            // Only redirect if we have valid role data
-            if (userData.role) {
-                const targetPage = (userData.role === 'admin' || userData.role === 'staff') 
-                    ? 'staff.html' 
-                    : 'client.html';
-                window.location.href = targetPage;
-            }
-        } catch (err) {
-            // If session is corrupted, clear it
-            console.error('Session parse error:', err);
-            sessionStorage.removeItem('twende_user');
+    const name = document.getElementById('regName').value;
+    const email = document.getElementById('regEmail').value;
+    const password = document.getElementById('regPassword').value;
+    const phone = document.getElementById('regPhone').value;
+    const accountType = document.querySelector('input[name="accountType"]:checked').value;
+    
+    try {
+        const response = await fetch(`${API_URL}/api/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                email,
+                password,
+                phone: phone || '',
+                interest: '',
+                role: accountType === 'staff' ? 'staff' : 'client'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Account created successfully! Please login.');
+            showLogin();
+            // Clear form
+            document.getElementById('regName').value = '';
+            document.getElementById('regEmail').value = '';
+            document.getElementById('regPassword').value = '';
+            document.getElementById('regPhone').value = '';
+        } else {
+            alert(result.message || 'Registration failed');
         }
+    } catch (error) {
+        alert('Connection error. Please try again.');
     }
-});
+}
+
+// Account type selection
+function selectAccountType(type) {
+    document.querySelectorAll('.account-type-card').forEach(card => {
+        card.classList.remove('active');
+    });
+    event.currentTarget.classList.add('active');
+}
+
+// Check if already logged in
+const user = sessionStorage.getItem('twende_user');
+if (user) {
+    const userData = JSON.parse(user);
+    window.location.href = (userData.role === 'admin' || userData.role === 'staff') 
+        ? 'staff.html' 
+        : 'client.html';
+}

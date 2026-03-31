@@ -45,6 +45,46 @@ app.get('/health', async (req, res) => {
     }
 });
 
+// ================= REGISTRATION =================
+app.post('/api/register', async (req, res) => {
+    try {
+        const { name, email, password, phone, interest, role } = req.body;
+        
+        // Validate required fields
+        if (!name || !email || !password) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Name, email, and password are required' 
+            });
+        }
+        
+        // Check if user already exists
+        const [existing] = await query('SELECT * FROM users WHERE email = ?', [email]);
+        if (existing && existing.length > 0) {
+            return res.json({ success: false, message: 'Email already exists' });
+        }
+        
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // Determine role and approval status
+        const userRole = role || 'client';
+        const isApproved = userRole === 'client'; // Auto-approve clients, staff need admin approval
+        
+        // Insert new user
+        await query(
+            'INSERT INTO users (name, email, password, role, phone, interest, is_approved) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [name, email, hashedPassword, userRole, phone || '', interest || '', isApproved]
+        );
+        
+        res.json({ success: true, message: 'Registration successful' });
+        
+    } catch (err) {
+        console.error('REGISTRATION ERROR:', err);
+        res.status(500).json({ success: false, message: 'Registration failed' });
+    }
+});
+
 // ================= LOGIN =================
 app.post('/api/login', async (req, res) => {
     try {
@@ -63,6 +103,11 @@ app.post('/api/login', async (req, res) => {
 
         if (!valid) {
             return res.json({ success: false, message: 'Invalid credentials' });
+        }
+
+        // Check if staff user is approved
+        if (user.role === 'staff' && !user.is_approved) {
+            return res.json({ success: false, message: 'Account pending approval' });
         }
 
         const { password, ...userWithoutPassword } = user;

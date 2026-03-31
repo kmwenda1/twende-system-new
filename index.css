@@ -1,7 +1,6 @@
 :root {
     --navy: #1a365d;
     --gold: #d97706;
-    --green: #10b981;
     --light: #f8fafc;
 }
 
@@ -17,61 +16,159 @@ body {
     padding: 20px;
 }
 
-.login-container {
+.auth-container {
     background: white;
     padding: 40px;
-    border-radius: 12px;
+    border-radius: 16px;
     width: 100%;
-    max-width: 400px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    max-width: 450px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
 }
 
-.login-header {
+.auth-form.hidden { display: none; }
+
+.auth-header {
     text-align: center;
     margin-bottom: 32px;
 }
 
-.login-header i { color: var(--gold); margin-bottom: 16px; }
-.login-header h1 { color: var(--navy); margin-bottom: 8px; }
-.login-header p { color: #64748b; }
+.logo {
+    width: 64px;
+    height: 64px;
+    background: var(--gold);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+}
+
+.logo i { color: white; width: 32px; height: 32px; }
+
+.auth-header h1 {
+    color: var(--navy);
+    margin-bottom: 8px;
+    font-size: 1.75rem;
+}
+
+.auth-header p { color: #64748b; }
 
 .form-group { margin-bottom: 20px; }
-.form-group label { display: block; margin-bottom: 8px; color: var(--navy); font-weight: 500; }
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--navy);
+    font-weight: 500;
+}
+
 .form-group input {
     width: 100%;
-    padding: 12px;
+    padding: 12px 16px;
     border: 2px solid #e2e8f0;
     border-radius: 8px;
     font-size: 1rem;
 }
-.form-group input:focus { outline: none; border-color: var(--gold); }
 
+.form-group input:focus {
+    outline: none;
+    border-color: var(--gold);
+}
+
+/* Account Type Selection */
+.account-types {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.account-type-card {
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.account-type-card:hover {
+    border-color: var(--gold);
+    background: #fffbeb;
+}
+
+.account-type-card.active {
+    border-color: var(--gold);
+    background: #fffbeb;
+}
+
+.account-type-card input { display: none; }
+
+.card-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.card-content strong {
+    color: var(--navy);
+    margin-bottom: 4px;
+}
+
+.card-content span {
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+/* Buttons */
 .btn-primary {
     width: 100%;
     padding: 14px;
-    background: var(--navy);
+    background: var(--gold);
     color: white;
     border: none;
     border-radius: 8px;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.2s;
 }
-.btn-primary:hover { background: #1e40af; }
+
+.btn-primary:hover { background: #b45309; }
+
+.auth-footer {
+    text-align: center;
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.auth-footer a {
+    color: var(--gold);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.auth-footer a:hover { text-decoration: underline; }
 
 .error-message {
     background: #fee2e2;
     color: #991b1b;
     padding: 12px;
     border-radius: 8px;
-    margin-top: 16px;
+    margin-bottom: 16px;
     display: none;
 }
 
-.login-footer {
-    text-align: center;
-    margin-top: 24px;
-    padding-top: 24px;
-    border-top: 1px solid #e2e8f0;
+.success-message {
+    background: #d1fae5;
+    color: #065f46;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: none;
 }
-.login-footer a { color: var(--gold); }

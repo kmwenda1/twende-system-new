@@ -26,6 +26,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Load all data
 async function loadAllData() {
     try {
+        console.log('Loading data from API...');
+        
         const [bookingsRes, fleetRes, usersRes, inquiriesRes, pendingStaffRes] = await Promise.all([
             fetch(`${API_URL}/api/bookings`),
             fetch(`${API_URL}/api/fleet`),
@@ -34,21 +36,38 @@ async function loadAllData() {
             fetch(`${API_URL}/api/staff/pending`)
         ]);
         
+        console.log('Responses:', {
+            bookings: bookingsRes.status,
+            fleet: fleetRes.status,
+            users: usersRes.status,
+            inquiries: inquiriesRes.status,
+            pendingStaff: pendingStaffRes.status
+        });
+        
         const bookingsData = await bookingsRes.json();
         const fleetData = await fleetRes.json();
         const usersData = await usersRes.json();
         const inquiriesData = await inquiriesRes.json();
         const pendingStaffData = await pendingStaffRes.json();
         
+        console.log('Parsed data:', {
+            bookings: bookingsData,
+            fleet: fleetData,
+            users: usersData,
+            inquiries: inquiriesData,
+            pendingStaff: pendingStaffData
+        });
+        
+        // Ensure we always have arrays
         allData = {
-            bookings: bookingsData.data || bookingsData || [],
-            fleet: fleetData.data || fleetData || [],
-            users: usersData.data || usersData || [],
-            inquiries: inquiriesData.data || inquiriesData || [],
-            pendingStaff: pendingStaffData.data || pendingStaffData || []
+            bookings: Array.isArray(bookingsData.data) ? bookingsData.data : (Array.isArray(bookingsData) ? bookingsData : []),
+            fleet: Array.isArray(fleetData.data) ? fleetData.data : (Array.isArray(fleetData) ? fleetData : []),
+            users: Array.isArray(usersData.data) ? usersData.data : (Array.isArray(usersData) ? usersData : []),
+            inquiries: Array.isArray(inquiriesData.data) ? inquiriesData.data : (Array.isArray(inquiriesData) ? inquiriesData : []),
+            pendingStaff: Array.isArray(pendingStaffData.data) ? pendingStaffData.data : (Array.isArray(pendingStaffData) ? pendingStaffData : [])
         };
         
-        console.log('Loaded ', allData);
+        console.log('Final allData:', allData);
         
         updateDashboard();
         loadFleet();
@@ -59,7 +78,7 @@ async function loadAllData() {
         
         if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch (err) {
-        console.error('Error loading ', err);
+        console.error('Error loading data:', err);
         alert('Error loading data. Please refresh the page.');
     }
 }
@@ -68,13 +87,20 @@ async function loadAllData() {
 function updateDashboard() {
     const { bookings, fleet, users } = allData;
     
-    const revenue = bookings
+    console.log('Updating dashboard with:', { bookings, fleet, users });
+    
+    // Ensure bookings is an array before filtering
+    const bookingsArray = Array.isArray(bookings) ? bookings : [];
+    const fleetArray = Array.isArray(fleet) ? fleet : [];
+    const usersArray = Array.isArray(users) ? users : [];
+    
+    const revenue = bookingsArray
         .filter(b => b.status === 'Confirmed' || b.status === 'Completed')
         .reduce((sum, b) => sum + (parseFloat(b.amount) || 0), 0);
     
-    const activeFleet = fleet.filter(v => v.status === 'Booked').length;
-    const availableFleet = fleet.filter(v => v.status === 'Available').length;
-    const clients = users.filter(u => u.role === 'client').length;
+    const activeFleet = fleetArray.filter(v => v.status === 'Booked').length;
+    const availableFleet = fleetArray.filter(v => v.status === 'Available').length;
+    const clients = usersArray.filter(u => u.role === 'client').length;
     
     document.getElementById('dashRevenue').textContent = `$${revenue.toLocaleString()}`;
     document.getElementById('dashActiveFleet').textContent = activeFleet;
@@ -168,7 +194,6 @@ async function updateFleetStatus(vehicleId, status) {
         console.log('Update result:', result);
         
         if (result.success) {
-            // Update local data
             const vehicle = allData.fleet.find(v => v.id === vehicleId);
             if (vehicle) {
                 vehicle.status = status;
@@ -208,13 +233,12 @@ function loadUsers() {
     `).join('');
 }
 
-// Load staff approvals - NEW
+// Load staff approvals
 function loadStaffApprovals() {
     const pendingContainer = document.getElementById('pendingStaffList');
     const approvedContainer = document.getElementById('approvedStaffList');
     const badge = document.getElementById('pendingBadge');
     
-    // Update badge count
     const pendingCount = allData.pendingStaff?.length || 0;
     if (pendingCount > 0) {
         badge.textContent = pendingCount;
@@ -223,7 +247,6 @@ function loadStaffApprovals() {
         badge.classList.add('hidden');
     }
     
-    // Load pending staff
     if (!allData.pendingStaff || allData.pendingStaff.length === 0) {
         pendingContainer.innerHTML = `
             <div class="empty-state">
@@ -269,7 +292,6 @@ function loadStaffApprovals() {
         `).join('');
     }
     
-    // Load approved staff
     const approvedStaff = allData.users?.filter(u => u.role === 'staff' && u.is_approved) || [];
     
     if (!approvedStaff || approvedStaff.length === 0) {
@@ -319,7 +341,7 @@ async function approveStaff(staffId, approved) {
         
         if (result.success) {
             alert(`Staff ${approved ? 'approved' : 'rejected'} successfully!`);
-            await loadAllData(); // Reload to update lists
+            await loadAllData();
         } else {
             alert(`Failed to ${action} staff`);
         }

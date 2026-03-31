@@ -8,118 +8,224 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-    <header class="admin-header">
+    <!-- Sidebar -->
+    <aside class="sidebar">
         <div class="logo">
-            <i data-lucide="shield"></i>
-            <span>Twende Tours Admin</span>
+            <div class="logo-icon">
+                <i data-lucide="compass"></i>
+            </div>
+            <div class="logo-text">
+                <span class="brand">Twende</span>
+                <span class="tagline">Tours & Safaris</span>
+            </div>
         </div>
-        <nav class="admin-nav">
-            <a href="#" class="nav-link active" onclick="showSection('dashboard')">Dashboard</a>
-            <a href="#" class="nav-link" onclick="showSection('bookings')">Bookings</a>
-            <a href="#" class="nav-link" onclick="showSection('fleet')">Fleet</a>
-            <a href="#" class="nav-link" onclick="showSection('users')">Users</a>
-            <a href="#" class="nav-link" onclick="showSection('inquiries')">Inquiries</a>
-            <a href="#" class="nav-link logout" onclick="handleLogout()">Logout</a>
-        </nav>
-    </header>
 
-    <main class="admin-main">
+        <div class="user-badge">
+            <i data-lucide="shield"></i>
+            <span>Manager</span>
+        </div>
+
+        <nav class="nav-menu">
+            <a href="#" class="nav-link active" onclick="showSection('dashboard')">
+                <i data-lucide="layout-grid"></i> Dashboard
+            </a>
+            <a href="#" class="nav-link" onclick="showSection('intelligence')">
+                <i data-lucide="bar-chart-3"></i> Intelligence
+            </a>
+            <a href="#" class="nav-link" onclick="showSection('fleet')">
+                <i data-lucide="wrench"></i> Fleet Control
+            </a>
+            <a href="#" class="nav-link" onclick="showSection('bookings')">
+                <i data-lucide="calendar-check"></i> Bookings
+            </a>
+            <a href="#" class="nav-link" onclick="showSection('users')">
+                <i data-lucide="users"></i> Users
+            </a>
+            <a href="#" class="nav-link" onclick="showSection('inbox')">
+                <i data-lucide="inbox"></i> Social Inbox
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">
+                    <i data-lucide="user"></i>
+                </div>
+                <div class="user-details">
+                    <span id="adminName" class="name">Admin</span>
+                    <span class="role">manager</span>
+                </div>
+            </div>
+            <button onclick="logout()" class="logout-btn">
+                <i data-lucide="log-out"></i> Sign Out
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
         <!-- Dashboard Section -->
         <section id="dashboard" class="section">
-            <h1>Admin Dashboard</h1>
-            
+            <div class="section-header">
+                <h1>Dashboard</h1>
+                <p class="subtitle">Quick overview of your safari operations</p>
+            </div>
+
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-number" id="totalBookings">0</div>
-                    <div class="stat-label">Total Bookings</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="pendingBookings">0</div>
-                    <div class="stat-label">Pending Approval</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-number" id="totalRevenue">$0</div>
                     <div class="stat-label">Total Revenue</div>
+                    <div class="stat-value" id="dashRevenue">$0</div>
+                    <i data-lucide="dollar-sign" class="stat-icon"></i>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-number" id="availableVehicles">0</div>
-                    <div class="stat-label">Available Vehicles</div>
+                    <div class="stat-label">Active Fleet</div>
+                    <div class="stat-value" id="dashActiveFleet">0</div>
+                    <i data-lucide="truck" class="stat-icon"></i>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Available Fleet</div>
+                    <div class="stat-value" id="dashAvailableFleet">0</div>
+                    <i data-lucide="check-circle" class="stat-icon"></i>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Clients</div>
+                    <div class="stat-value" id="dashClients">0</div>
+                    <i data-lucide="users" class="stat-icon"></i>
                 </div>
             </div>
 
-            <div class="recent-activity">
-                <h2>Recent Bookings</h2>
-                <div id="recentBookings" class="bookings-list"></div>
+            <div class="recent-section">
+                <h2>Recent Activity</h2>
+                <div id="recentActivity" class="activity-list">
+                    <div class="empty-state">
+                        <i data-lucide="activity"></i>
+                        <p>No recent activity</p>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <!-- Bookings Section -->
-        <section id="bookings" class="section hidden">
-            <h1>Manage Bookings</h1>
-            <div id="allBookings" class="bookings-table"></div>
+        <!-- Business Intelligence -->
+        <section id="intelligence" class="section hidden">
+            <div class="section-header">
+                <h1>Business Intelligence</h1>
+                <p class="subtitle">Overview of your safari operations</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Revenue</div>
+                    <div class="stat-value" id="intelRevenue">$0</div>
+                    <i data-lucide="dollar-sign" class="stat-icon orange"></i>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Fleet</div>
+                    <div class="stat-value" id="intelActiveFleet">0</div>
+                    <i data-lucide="truck" class="stat-icon green"></i>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Available Fleet</div>
+                    <div class="stat-value" id="intelAvailableFleet">0</div>
+                    <i data-lucide="check-circle" class="stat-icon yellow"></i>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Clients</div>
+                    <div class="stat-value" id="intelClients">0</div>
+                    <i data-lucide="users" class="stat-icon orange"></i>
+                </div>
+            </div>
         </section>
 
-        <!-- Fleet Section -->
+        <!-- Fleet Control -->
         <section id="fleet" class="section hidden">
-            <h1>Manage Fleet</h1>
-            <button class="btn-primary" onclick="openAddVehicleModal()">+ Add Vehicle</button>
-            <div id="fleetList" class="fleet-grid"></div>
+            <div class="section-header">
+                <h1>Fleet Control Center</h1>
+                <p class="subtitle">Manage vehicle statuses</p>
+            </div>
+
+            <div id="fleetList" class="fleet-list"></div>
         </section>
 
-        <!-- Users Section -->
-        <section id="users" class="section hidden">
-            <h1>Manage Users</h1>
-            <div class="users-container">
-                <div class="user-column">
-                    <h2>Pending Approvals</h2>
-                    <div id="pendingUsers" class="users-list"></div>
-                </div>
-                <div class="user-column">
-                    <h2>All Users</h2>
-                    <div id="allUsers" class="users-list"></div>
-                </div>
+        <!-- Bookings -->
+        <section id="bookings" class="section hidden">
+            <div class="section-header">
+                <h1>Booking Engine</h1>
+                <p class="subtitle">Create and manage trip bookings</p>
+            </div>
+
+            <div class="card">
+                <h2><i data-lucide="plus-circle"></i> New Booking</h2>
+                <form id="bookingForm" onsubmit="createBooking(event)" class="booking-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Vehicle</label>
+                            <select id="bookingVehicle" required>
+                                <option value="">Select vehicle</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Client Name</label>
+                            <input type="text" id="bookingClient" required placeholder="Client full name">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Destination</label>
+                            <input type="text" id="bookingDestination" required placeholder="e.g. Masai Mara">
+                        </div>
+                        <div class="form-group">
+                            <label>Travelers</label>
+                            <input type="number" id="bookingTravelers" min="1" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Start Date</label>
+                            <input type="date" id="bookingStart" required>
+                        </div>
+                        <div class="form-group">
+                            <label>End Date</label>
+                            <input type="date" id="bookingEnd" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary">Confirm Booking</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2><i data-lucide="calendar"></i> All Bookings</h2>
+                <div id="bookingsList" class="bookings-table"></div>
             </div>
         </section>
 
-        <!-- Inquiries Section -->
-        <section id="inquiries" class="section hidden">
-            <h1>Manage Inquiries</h1>
-            <div id="inquiriesList" class="inquiries-container"></div>
+        <!-- Users -->
+        <section id="users" class="section hidden">
+            <div class="section-header">
+                <h1>User Management</h1>
+                <p class="subtitle">Approve staff and manage users</p>
+            </div>
+
+            <div class="card">
+                <h2><i data-lucide="users"></i> All Users</h2>
+                <div id="usersList" class="users-list"></div>
+            </div>
+        </section>
+
+        <!-- Social Inbox -->
+        <section id="inbox" class="section hidden">
+            <div class="section-header">
+                <h1>Social Inbox</h1>
+                <p class="subtitle">Client safari requests and inquiries</p>
+            </div>
+
+            <div id="inboxList" class="inbox-list">
+                <div class="empty-state">
+                    <i data-lucide="inbox"></i>
+                    <p>No inquiries yet.</p>
+                </div>
+            </div>
         </section>
     </main>
-
-    <!-- Add Vehicle Modal -->
-    <div id="vehicleModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Add New Vehicle</h2>
-                <button onclick="closeAddVehicleModal()">&times;</button>
-            </div>
-            <form id="addVehicleForm" onsubmit="addVehicle(event)">
-                <div class="form-group">
-                    <label>Vehicle Name</label>
-                    <input type="text" id="vehicleName" required>
-                </div>
-                <div class="form-group">
-                    <label>Type</label>
-                    <select id="vehicleType" required>
-                        <option value="4x4">4x4</option>
-                        <option value="Van">Van</option>
-                        <option value="Bus">Bus</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Daily Rate (KES)</label>
-                    <input type="number" id="vehicleRate" required>
-                </div>
-                <div class="form-group">
-                    <label>Seats</label>
-                    <input type="number" id="vehicleSeats" required>
-                </div>
-                <button type="submit" class="btn-primary">Add Vehicle</button>
-            </form>
-        </div>
-    </div>
 
     <script src="admin.js"></script>
 </body>

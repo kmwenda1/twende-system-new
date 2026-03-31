@@ -1,11 +1,6 @@
-// API Base URL
-const API_URL = 'https://twende-tours-production.up.railway.app';
-
+const API_URL = 'https://twende-system-new-production.up.railway.app';
 let currentUser = null;
-let allBookings = [];
-let allFleet = [];
-let allUsers = [];
-let allInquiries = [];
+let allData = {};
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -16,15 +11,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
     
-    await loadDashboard();
+    document.getElementById('adminName').textContent = currentUser.name || 'Admin';
+    await loadAllData();
     
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 });
 
-// Load dashboard
-async function loadDashboard() {
+// Load all data
+async function loadAllData() {
     try {
         const [bookings, fleet, users, inquiries] = await Promise.all([
             fetch(`${API_URL}/api/bookings`).then(r => r.json()),
@@ -33,179 +27,243 @@ async function loadDashboard() {
             fetch(`${API_URL}/api/inquiries`).then(r => r.json())
         ]);
         
-        allBookings = bookings.data || [];
-        allFleet = fleet.data || [];
-        allUsers = users.data || [];
-        allInquiries = inquiries.data || [];
+        allData = {
+            bookings: bookings.data || [],
+            fleet: fleet.data || [],
+            users: users.data || [],
+            inquiries: inquiries.data || []
+        };
         
-        // Update stats
-        document.getElementById('totalBookings').textContent = allBookings.length;
-        document.getElementById('pendingBookings').textContent = 
-            allBookings.filter(b => b.status === 'Pending').length;
-        document.getElementById('totalRevenue').textContent = 
-            `$${allBookings.reduce((sum, b) => sum + (b.amount || 0), 0)}`;
-        document.getElementById('availableVehicles').textContent = 
-            allFleet.filter(v => v.status === 'Available').length;
-        
-        // Load recent bookings
-        loadRecentBookings();
-        loadAllBookings();
+        updateDashboard();
         loadFleet();
         loadUsers();
         loadInquiries();
+        loadBookings();
         
-    } catch (error) {
-        console.error('Error loading dashboard:', error);
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (err) {
+        console.error('Error loading data:', err);
     }
 }
 
-// Load recent bookings
-function loadRecentBookings() {
-    const container = document.getElementById('recentBookings');
-    const recent = allBookings.slice(0, 5);
+// Update dashboard stats
+function updateDashboard() {
+    const { bookings, fleet, users } = allData;
     
-    container.innerHTML = recent.map(b => `
-        <div class="booking-item">
-            <div>
-                <strong>Booking #${b.id}</strong> - ${b.destination}
-                <br><small>Client: ${b.user_id} | ${b.start_date}</small>
+    const revenue = bookings
+        .filter(b => b.status === 'Confirmed' || b.status === 'Completed')
+        .reduce((sum, b) => sum + (b.amount || 0), 0);
+    
+    const activeFleet = fleet.filter(v => v.status === 'Booked').length;
+    const availableFleet = fleet.filter(v => v.status === 'Available').length;
+    const clients = users.filter(u => u.role === 'client').length;
+    
+    // Dashboard
+    document.getElementById('dashRevenue').textContent = `$${revenue.toLocaleString()}`;
+    document.getElementById('dashActiveFleet').textContent = activeFleet;
+    document.getElementById('dashAvailableFleet').textContent = availableFleet;
+    document.getElementById('dashClients').textContent = clients;
+    
+    // Intelligence
+    document.getElementById('intelRevenue').textContent = `$${revenue.toLocaleString()}`;
+    document.getElementById('intelActiveFleet').textContent = activeFleet;
+    document.getElementById('intelAvailableFleet').textContent = availableFleet;
+    document.getElementById('intelClients').textContent = clients;
+    
+    // Recent activity
+    loadRecentActivity();
+}
+
+// Load recent activity
+function loadRecentActivity() {
+    const container = document.getElementById('recentActivity');
+    const recent = allData.bookings.slice(0, 5);
+    
+    if (recent.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i data-lucide="activity"></i>
+                <p>No recent activity</p>
             </div>
-            <span class="badge">${b.status}</span>
-        </div>
-    `).join('');
-}
-
-// Load all bookings
-function loadAllBookings() {
-    const container = document.getElementById('allBookings');
-    
-    container.innerHTML = `
-        <div class="bookings-table">
-            ${allBookings.map(b => `
-                <div class="booking-item">
-                    <div>
-                        <strong>#${b.id}</strong> - ${b.destination}
-                        <br><small>Vehicle: ${b.vehicle_id} | Travelers: ${b.travelers}</small>
-                    </div>
-                    <div>
-                        <span>${b.status}</span>
-                        ${b.status === 'Pending' ? `
-                            <button class="btn-approve" onclick="updateBookingStatus(${b.id}, 'Confirmed')">Approve</button>
-                            <button class="btn-reject" onclick="updateBookingStatus(${b.id}, 'Cancelled')">Reject</button>
-                        ` : ''}
-                    </div>
+        `;
+    } else {
+        container.innerHTML = recent.map(b => `
+            <div class="activity-item">
+                <div class="activity-icon">
+                    <i data-lucide="calendar"></i>
                 </div>
-            `).join('')}
-        </div>
-    `;
-}
-
-// Update booking status
-async function updateBookingStatus(bookingId, status) {
-    try {
-        await fetch(`${API_URL}/api/bookings/${bookingId}/status`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status })
-        });
-        
-        alert(`Booking ${status}`);
-        loadDashboard();
-    } catch (error) {
-        alert('Failed to update booking');
+                <div class="activity-info">
+                    <div class="activity-title">New booking: ${b.destination}</div>
+                    <div class="activity-time">${new Date(b.created_at).toLocaleDateString()}</div>
+                </div>
+            </div>
+        `).join('');
     }
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // Load fleet
 function loadFleet() {
     const container = document.getElementById('fleetList');
     
-    container.innerHTML = allFleet.map(v => `
-        <div class="fleet-card">
-            <h3>${v.name}</h3>
-            <p>Type: ${v.type}</p>
-            <p>Rate: KES ${v.rate}/day</p>
-            <p>Seats: ${v.seats}</p>
-            <p>Status: ${v.status}</p>
+    container.innerHTML = allData.fleet.map(v => `
+        <div class="fleet-item">
+            <div class="fleet-info">
+                <div class="fleet-name">${v.name}</div>
+                <div class="fleet-details">${v.type} · $${v.rate}/day</div>
+            </div>
+            <div class="fleet-status">
+                <span class="status-badge status-${v.status?.toLowerCase()}">${v.status}</span>
+                <select class="status-select" onchange="updateFleetStatus(${v.id}, this.value)">
+                    <option value="Available" ${v.status === 'Available' ? 'selected' : ''}>Available</option>
+                    <option value="Booked" ${v.status === 'Booked' ? 'selected' : ''}>Booked</option>
+                    <option value="Maintenance" ${v.status === 'Maintenance' ? 'selected' : ''}>Maintenance</option>
+                </select>
+            </div>
         </div>
     `).join('');
+}
+
+// Update fleet status
+async function updateFleetStatus(vehicleId, status) {
+    try {
+        await fetch(`${API_URL}/api/fleet/${vehicleId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+        
+        await loadAllData();
+    } catch (err) {
+        console.error('Error updating fleet:', err);
+    }
 }
 
 // Load users
 function loadUsers() {
-    const pendingContainer = document.getElementById('pendingUsers');
-    const allContainer = document.getElementById('allUsers');
+    const container = document.getElementById('usersList');
     
-    const pending = allUsers.filter(u => u.role === 'staff' && !u.is_approved);
-    
-    pendingContainer.innerHTML = pending.map(u => `
+    container.innerHTML = allData.users.map(u => `
         <div class="user-item">
-            <div class="user-info">
-                <div class="user-name">${u.name}</div>
-                <div class="user-email">${u.email}</div>
+            <div class="user-item-info">
+                <div class="user-item-name">${u.name}</div>
+                <div class="user-item-role">${u.role}</div>
             </div>
-            <button class="btn-approve" onclick="approveUser(${u.id})">Approve</button>
+            <div class="user-item-date">${new Date(u.created_at).toLocaleDateString()}</div>
         </div>
     `).join('');
-    
-    allContainer.innerHTML = allUsers.map(u => `
-        <div class="user-item">
-            <div class="user-info">
-                <div class="user-name">${u.name}</div>
-                <div class="user-email">${u.email} (${u.role})</div>
-            </div>
-            <span>${u.is_approved ? '✓' : '⏳'}</span>
-        </div>
-    `).join('');
-}
-
-// Approve user
-async function approveUser(userId) {
-    try {
-        await fetch(`${API_URL}/api/users/${userId}/approve`, {
-            method: 'PUT'
-        });
-        
-        alert('User approved');
-        loadDashboard();
-    } catch (error) {
-        alert('Failed to approve user');
-    }
 }
 
 // Load inquiries
 function loadInquiries() {
-    const container = document.getElementById('inquiriesList');
+    const container = document.getElementById('inboxList');
     
-    container.innerHTML = allInquiries.map(i => `
-        <div class="inquiry-card ${i.status === 'NO ACTION' ? 'new' : ''}">
-            <div class="inquiry-header">
-                <div class="inquiry-client">${i.client_name}</div>
-                <span class="inquiry-status ${i.status === 'NO ACTION' ? 'new' : 'replied'}">${i.status}</span>
+    if (allData.inquiries.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i data-lucide="inbox"></i>
+                <p>No inquiries yet.</p>
             </div>
-            <p><strong>Email:</strong> ${i.client_email}</p>
-            <p><strong>Destination:</strong> ${i.destination}</p>
-            <p><strong>Notes:</strong> ${i.notes}</p>
-            ${i.status === 'NO ACTION' ? `
-                <button class="btn-approve" onclick="markInquiryReplied(${i.id})">Mark as Replied</button>
-            ` : ''}
-        </div>
-    `).join('');
+        `;
+    } else {
+        container.innerHTML = allData.inquiries.map(i => `
+            <div class="inquiry-item">
+                <div class="inquiry-header">
+                    <div class="inquiry-client">${i.client_name}</div>
+                    <div class="inquiry-date">${new Date(i.created_at).toLocaleDateString()}</div>
+                </div>
+                <div class="inquiry-message">${i.notes || i.subject || 'No message'}</div>
+                <div class="inquiry-contact">
+                    <strong>Email:</strong> ${i.client_email} · 
+                    <strong>Phone:</strong> ${i.client_phone || 'N/A'}
+                </div>
+            </div>
+        `).join('');
+    }
 }
 
-// Mark inquiry replied
-async function markInquiryReplied(inquiryId) {
+// Load bookings
+function loadBookings() {
+    const container = document.getElementById('bookingsList');
+    const vehicleSelect = document.getElementById('bookingVehicle');
+    
+    // Populate vehicle dropdown
+    vehicleSelect.innerHTML = '<option value="">Select vehicle</option>' +
+        allData.fleet.filter(v => v.status === 'Available').map(v => 
+            `<option value="${v.id}">${v.name} - $${v.rate}/day</option>`
+        ).join('');
+    
+    // Show bookings table
+    if (allData.bookings.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i data-lucide="calendar"></i>
+                <p>No bookings yet</p>
+            </div>
+        `;
+    } else {
+        container.innerHTML = `
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="text-align: left; border-bottom: 2px solid var(--border);">
+                        <th style="padding: 12px;">Client</th>
+                        <th style="padding: 12px;">Destination</th>
+                        <th style="padding: 12px;">Dates</th>
+                        <th style="padding: 12px;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${allData.bookings.map(b => `
+                        <tr style="border-bottom: 1px solid var(--border);">
+                            <td style="padding: 12px;">${b.user_id || 'N/A'}</td>
+                            <td style="padding: 12px;">${b.destination}</td>
+                            <td style="padding: 12px;">${b.start_date}</td>
+                            <td style="padding: 12px;">
+                                <span class="status-badge status-${b.status?.toLowerCase()}">${b.status}</span>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+}
+
+// Create booking
+async function createBooking(e) {
+    e.preventDefault();
+    
+    const booking = {
+        user_id: currentUser.id,
+        vehicle_id: document.getElementById('bookingVehicle').value,
+        destination: document.getElementById('bookingDestination').value,
+        start_date: document.getElementById('bookingStart').value,
+        end_date: document.getElementById('bookingEnd').value,
+        travelers: document.getElementById('bookingTravelers').value,
+        amount: allData.fleet.find(v => v.id == document.getElementById('bookingVehicle').value)?.rate || 0,
+        status: 'Confirmed'
+    };
+    
     try {
-        await fetch(`${API_URL}/api/inquiries/${inquiryId}`, {
-            method: 'PUT',
+        const response = await fetch(`${API_URL}/api/bookings`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'Replied' })
+            body: JSON.stringify(booking)
         });
         
-        alert('Inquiry marked as replied');
-        loadDashboard();
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Booking created successfully!');
+            document.getElementById('bookingForm').reset();
+            await loadAllData();
+        } else {
+            alert('Failed to create booking');
+        }
     } catch (error) {
-        alert('Failed to update inquiry');
+        console.error('Booking error:', error);
+        alert('Connection error');
     }
 }
 
@@ -215,38 +273,13 @@ function showSection(sectionId) {
     document.getElementById(sectionId).classList.remove('hidden');
     
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    event.target.classList.add('active');
-}
-
-// Add vehicle modal
-function openAddVehicleModal() {
-    document.getElementById('vehicleModal').classList.remove('hidden');
-}
-
-function closeAddVehicleModal() {
-    document.getElementById('vehicleModal').classList.add('hidden');
-}
-
-// Add vehicle
-async function addVehicle(e) {
-    e.preventDefault();
+    event?.target?.closest('.nav-link')?.classList.add('active');
     
-    const vehicle = {
-        name: document.getElementById('vehicleName').value,
-        type: document.getElementById('vehicleType').value,
-        rate: document.getElementById('vehicleRate').value,
-        seats: document.getElementById('vehicleSeats').value,
-        status: 'Available'
-    };
-    
-    // Note: You'll need to add POST /api/fleet endpoint
-    alert('Vehicle added! (Backend endpoint needed)');
-    closeAddVehicleModal();
-    loadDashboard();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // Logout
-function handleLogout() {
+function logout() {
     sessionStorage.removeItem('twende_user');
     window.location.href = 'index.html';
 }

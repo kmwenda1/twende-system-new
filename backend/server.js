@@ -50,7 +50,6 @@ app.post('/api/register', async (req, res) => {
     try {
         const { name, email, password, phone, interest, role } = req.body;
         
-        // Validate required fields
         if (!name || !email || !password) {
             return res.status(400).json({ 
                 success: false, 
@@ -58,20 +57,15 @@ app.post('/api/register', async (req, res) => {
             });
         }
         
-        // Check if user already exists
         const [existing] = await query('SELECT * FROM users WHERE email = ?', [email]);
         if (existing && existing.length > 0) {
             return res.json({ success: false, message: 'Email already exists' });
         }
         
-        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
-        
-        // Determine role and approval status
         const userRole = role || 'client';
-        const isApproved = userRole === 'client'; // Auto-approve clients, staff need admin approval
+        const isApproved = userRole === 'client';
         
-        // Insert new user
         await query(
             'INSERT INTO users (name, email, password, role, phone, interest, is_approved) VALUES (?, ?, ?, ?, ?, ?, ?)',
             [name, email, hashedPassword, userRole, phone || '', interest || '', isApproved]
@@ -88,24 +82,19 @@ app.post('/api/register', async (req, res) => {
 // ================= LOGIN =================
 app.post('/api/login', async (req, res) => {
     try {
-        const users = await query(
-            'SELECT * FROM users WHERE email = ?',
-            [req.body.email]
-        );
+        const users = await query('SELECT * FROM users WHERE email = ?', [req.body.email]);
 
         if (!users || users.length === 0) {
             return res.json({ success: false, message: 'Invalid credentials' });
         }
 
         const user = users[0];
-
         const valid = await bcrypt.compare(req.body.password, user.password);
 
         if (!valid) {
             return res.json({ success: false, message: 'Invalid credentials' });
         }
 
-        // Check if staff user is approved
         if (user.role === 'staff' && !user.is_approved) {
             return res.json({ success: false, message: 'Account pending approval' });
         }
@@ -131,6 +120,20 @@ app.get('/api/fleet', async (req, res) => {
         res.json({ success: true, data: fleet });
     } catch (err) {
         console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ✅ NEW: Update Fleet Status Endpoint
+app.put('/api/fleet/:id/status', async (req, res) => {
+    try {
+        const { status } = req.body;
+        const { id } = req.params;
+        
+        await query('UPDATE fleet SET status = ? WHERE id = ?', [status, id]);
+        res.json({ success: true, message: 'Fleet status updated' });
+    } catch (err) {
+        console.error('FLEET STATUS ERROR:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -161,13 +164,9 @@ app.post('/api/bookings', async (req, res) => {
     }
 });
 
-// ================= UPDATE BOOKING =================
 app.put('/api/bookings/:id/status', async (req, res) => {
     try {
-        await query(
-            'UPDATE bookings SET status = ? WHERE id = ?',
-            [req.body.status, req.params.id]
-        );
+        await query('UPDATE bookings SET status = ? WHERE id = ?', [req.body.status, req.params.id]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -186,10 +185,7 @@ app.get('/api/inquiries', async (req, res) => {
 
 app.put('/api/inquiries/:id', async (req, res) => {
     try {
-        await query(
-            'UPDATE inquiries SET status = ? WHERE id = ?',
-            [req.body.status, req.params.id]
-        );
+        await query('UPDATE inquiries SET status = ? WHERE id = ?', [req.body.status, req.params.id]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -205,17 +201,8 @@ app.post('/api/mpesa/stkpush', async (req, res) => {
 app.get('/api/update-admin-password', async (req, res) => {
     try {
         const hashedPassword = await bcrypt.hash('123', 10);
-
-        await query(
-            'UPDATE users SET password = ? WHERE email = ?',
-            [hashedPassword, 'admin@twende.com']
-        );
-
-        res.json({
-            success: true,
-            message: 'Admin password updated!'
-        });
-
+        await query('UPDATE users SET password = ? WHERE email = ?', [hashedPassword, 'admin@twende.com']);
+        res.json({ success: true, message: 'Admin password updated!' });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

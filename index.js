@@ -38,10 +38,13 @@ async function handleLogin(e) {
         if (result.success) {
             sessionStorage.setItem('twende_user', JSON.stringify(result.user));
             
-            if (result.role === 'admin' || result.role === 'staff') {
-                window.location.href = 'staff.html';
+            // ✅ FIXED: Route based on exact role
+            if (result.role === 'admin') {
+                window.location.href = 'admin.html';  // Admins go to admin portal
+            } else if (result.role === 'staff') {
+                window.location.href = 'staff.html';  // Staff go to staff portal
             } else {
-                window.location.href = 'client.html';
+                window.location.href = 'client.html';  // Clients go to client portal
             }
         } else {
             alert(result.message || 'Login failed');
@@ -80,7 +83,6 @@ async function handleRegister(e) {
         if (result.success) {
             alert('Account created successfully! Please login.');
             showLogin();
-            // Clear form
             document.getElementById('regName').value = '';
             document.getElementById('regEmail').value = '';
             document.getElementById('regPassword').value = '';
@@ -105,7 +107,13 @@ function selectAccountType(type) {
 const user = sessionStorage.getItem('twende_user');
 if (user) {
     const userData = JSON.parse(user);
-    window.location.href = (userData.role === 'admin' || userData.role === 'staff') 
-        ? 'staff.html' 
-        : 'client.html';
+    
+    // ✅ FIXED: Route based on exact role
+    if (userData.role === 'admin') {
+        window.location.href = 'admin.html';
+    } else if (userData.role === 'staff') {
+        window.location.href = 'staff.html';
+    } else {
+        window.location.href = 'client.html';
+    }
 }

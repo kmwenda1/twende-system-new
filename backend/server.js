@@ -113,6 +113,18 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// ================= USERS =================
+// ✅ NEW: Get all users endpoint
+app.get('/api/users', async (req, res) => {
+    try {
+        const users = await query('SELECT id, name, email, role, phone, created_at FROM users ORDER BY created_at DESC');
+        res.json({ success: true, data: users });
+    } catch (err) {
+        console.error('USERS ERROR:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ================= FLEET =================
 app.get('/api/fleet', async (req, res) => {
     try {
@@ -124,7 +136,7 @@ app.get('/api/fleet', async (req, res) => {
     }
 });
 
-// ✅ Update Fleet Status Endpoint (ONLY ONE - removed duplicate)
+// Update Fleet Status
 app.put('/api/fleet/:id/status', async (req, res) => {
     try {
         const { status } = req.body;

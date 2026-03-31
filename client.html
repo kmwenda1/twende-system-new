@@ -219,10 +219,34 @@
                     <label>Subject</label>
                     <input type="text" id="inquirySubject" required placeholder="What is this about?">
                 </div>
+                
+                <div class="form-group">
+                    <label>How did you hear about us?</label>
+                    <select id="inquirySource" required>
+                        <option value="">Select a source...</option>
+                        <option value="Website">Website</option>
+                        <option value="WhatsApp">WhatsApp</option>
+                        <option value="Twitter">Twitter / X</option>
+                        <option value="Instagram">Instagram</option>
+                        <option value="Facebook">Facebook</option>
+                        <option value="TikTok">TikTok</option>
+                        <option value="Google">Google Search</option>
+                        <option value="Referral">Friend Referral</option>
+                        <option value="Travel Agent">Travel Agent</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Destination (Optional)</label>
+                    <input type="text" id="inquiryDestination" placeholder="e.g., Masai Mara, Amboseli">
+                </div>
+                
                 <div class="form-group">
                     <label>Message</label>
                     <textarea id="inquiryMessage" rows="5" required placeholder="Tell us more about your inquiry..."></textarea>
                 </div>
+                
                 <button type="submit" class="btn-primary btn-full">Send Inquiry</button>
             </form>
         </div>

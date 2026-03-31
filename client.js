@@ -15,14 +15,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadFleet();
     
     if (typeof lucide !== 'undefined') lucide.createIcons();
-    
-    // Modal: close on escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            closeBookingModal();
-            closeInquiryModal();
-        }
-    });
 });
 
 // Update user info
@@ -64,7 +56,6 @@ async function loadDashboard() {
         document.getElementById('totalTrips').textContent = total;
         document.getElementById('completedTrips').textContent = completed;
         
-        // Show recent bookings
         const recentContainer = document.getElementById('recentBookings');
         const recent = userBookings.slice(0, 3);
         
@@ -79,7 +70,7 @@ async function loadDashboard() {
             recentContainer.innerHTML = recent.map(b => `
                 <div class="booking-card">
                     <h3>${b.destination}</h3>
-                    <p><i data-lucide="calendar"></i> ${b.start_date} - ${b.end_date}</p>
+                    <p><i data-lucide="calendar"></i> ${formatDate(b.start_date)} - ${formatDate(b.end_date)}</p>
                     <p><i data-lucide="users"></i> ${b.travelers} travelers</p>
                     <span class="booking-status status-${b.status.toLowerCase()}">${b.status}</span>
                 </div>
@@ -100,9 +91,18 @@ async function loadFleet() {
         allVehicles = result.data || [];
         
         const grid = document.getElementById('fleetGrid');
-        grid.innerHTML = allVehicles.map(v => {
-            // Use placeholder images if no image_url
-            const imageUrl = v.image_url || `https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=400&h=300&fit=crop`;
+        grid.innerHTML = allVehicles.map((v, index) => {
+            // Use different images for each vehicle
+            const images = [
+                'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=400&h=300&fit=crop',
+                'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=400&h=300&fit=crop',
+                'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400&h=300&fit=crop',
+                'https://images.unsplash.com/photo-1580274455191-1c62238fa333?w=400&h=300&fit=crop',
+                'https://images.unsplash.com/photo-1503376763036-0661206c2c31?w=400&h=300&fit=crop',
+                'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=400&h=300&fit=crop'
+            ];
+            
+            const imageUrl = v.image_url || images[index % images.length];
             
             return `
                 <div class="vehicle-card">
@@ -143,7 +143,7 @@ async function loadBookings() {
             list.innerHTML = userBookings.map(b => `
                 <div class="booking-card">
                     <h3>${b.destination}</h3>
-                    <p><i data-lucide="calendar"></i> ${b.start_date} to ${b.end_date}</p>
+                    <p><i data-lucide="calendar"></i> ${formatDate(b.start_date)} to ${formatDate(b.end_date)}</p>
                     <p><i data-lucide="users"></i> ${b.travelers} travelers</p>
                     <p><i data-lucide="dollar-sign"></i> $${b.amount}</p>
                     <span class="booking-status status-${b.status.toLowerCase()}">${b.status}</span>
@@ -181,7 +181,11 @@ async function loadInquiries() {
                         <div class="inquiry-date">${new Date(i.created_at).toLocaleDateString()}</div>
                     </div>
                     <p class="inquiry-message">${i.notes || i.message}</p>
-                    <span class="inquiry-status inquiry-${i.status?.toLowerCase().replace(' ', '-')}">${i.status}</span>
+                    <div class="inquiry-meta">
+                        <span class="inquiry-source">${i.source || 'Website'}</span>
+                        <span class="inquiry-status inquiry-${i.status?.toLowerCase().replace(' ', '-')}">${i.status}</span>
+                    </div>
+                    ${i.reply_notes ? `<p class="inquiry-reply"><strong>Reply:</strong> ${i.reply_notes}</p>` : ''}
                 </div>
             `).join('');
         }
@@ -200,7 +204,6 @@ function openBookingModal() {
             `<option value="${v.id}">${v.name} - $${v.rate}/day</option>`
         ).join('');
     
-    // Set min date to today
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('startDate').min = today;
     document.getElementById('endDate').min = today;
@@ -272,7 +275,7 @@ async function submitBooking(e) {
     }
 }
 
-// Submit inquiry
+// Submit inquiry - FIXED
 async function submitInquiry(e) {
     e.preventDefault();
     
@@ -282,8 +285,8 @@ async function submitInquiry(e) {
         client_phone: currentUser.phone || '',
         subject: document.getElementById('inquirySubject').value,
         notes: document.getElementById('inquiryMessage').value,
-        source: 'Client Portal',
-        status: 'NO ACTION'
+        source: document.getElementById('inquirySource').value || 'Website',
+        destination: document.getElementById('inquiryDestination')?.value || ''
     };
     
     try {
@@ -300,12 +303,19 @@ async function submitInquiry(e) {
             closeInquiryModal();
             loadInquiries();
         } else {
-            alert('Failed to submit inquiry');
+            alert('Failed to submit inquiry: ' + (result.message || 'Unknown error'));
         }
     } catch (error) {
         console.error('Inquiry error:', error);
         alert('Connection error. Please try again.');
     }
+}
+
+// Format date helper
+function formatDate(dateStr) {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 // Logout

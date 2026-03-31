@@ -198,7 +198,6 @@ app.get('/api/bookings', async (req, res) => {
     }
 });
 
-// Check date overlap before creating booking
 app.post('/api/bookings/check-availability', async (req, res) => {
     try {
         const { vehicle_id, start_date, end_date, exclude_booking_id } = req.body;
@@ -279,13 +278,11 @@ app.post('/api/bookings', async (req, res) => {
     }
 });
 
-// Approve/Reject booking
 app.put('/api/bookings/:id/status', async (req, res) => {
     try {
         const { status } = req.body;
         const { id } = req.params;
         
-        // Valid statuses: Pending, Confirmed, Completed, Cancelled
         const validStatuses = ['Pending', 'Confirmed', 'Completed', 'Cancelled'];
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ success: false, message: 'Invalid status' });
@@ -293,7 +290,6 @@ app.put('/api/bookings/:id/status', async (req, res) => {
         
         await query('UPDATE bookings SET status = ? WHERE id = ?', [status, id]);
         
-        // If booking is confirmed, update vehicle status to Booked
         if (status === 'Confirmed') {
             const [booking] = await query('SELECT vehicle_id FROM bookings WHERE id = ?', [id]);
             if (booking) {
@@ -307,7 +303,6 @@ app.put('/api/bookings/:id/status', async (req, res) => {
     }
 });
 
-// Get bookings for calendar
 app.get('/api/bookings/calendar', async (req, res) => {
     try {
         const { vehicle_id, month, year } = req.query;
@@ -351,10 +346,74 @@ app.get('/api/inquiries', async (req, res) => {
     }
 });
 
+// Create inquiry - FIXED
+app.post('/api/inquiries', async (req, res) => {
+    try {
+        const { client_name, client_email, client_phone, destination, notes, source, subject } = req.body;
+        
+        if (!client_name || !client_email || !notes) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Name, email, and message are required' 
+            });
+        }
+        
+        const result = await query(
+            `INSERT INTO inquiries (client_name, client_email, client_phone, destination, notes, source, subject, status) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'NO ACTION')`,
+            [
+                client_name,
+                client_email,
+                client_phone || '',
+                destination || '',
+                notes,
+                source || 'Website',
+                subject || ''
+            ]
+        );
+        
+        res.json({ 
+            success: true, 
+            message: 'Inquiry submitted successfully',
+            inquiryId: result.insertId 
+        });
+    } catch (err) {
+        console.error('INQUIRY ERROR:', err);
+        res.status(500).json({ success: false, message: 'Failed to submit inquiry' });
+    }
+});
+
+// Update inquiry status
 app.put('/api/inquiries/:id', async (req, res) => {
     try {
-        await query('UPDATE inquiries SET status = ? WHERE id = ?', [req.body.status, req.params.id]);
+        const { status, reply_notes } = req.body;
+        const { id } = req.params;
+        
+        if (reply_notes) {
+            await query(
+                'UPDATE inquiries SET status = ?, reply_notes = ?, replied_at = NOW() WHERE id = ?',
+                [status, reply_notes, id]
+            );
+        } else {
+            await query('UPDATE inquiries SET status = ? WHERE id = ?', [status, id]);
+        }
+        
         res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get old inquiries that need reminders (no reply after 24 hours)
+app.get('/api/inquiries/old', async (req, res) => {
+    try {
+        const oldInquiries = await query(`
+            SELECT * FROM inquiries 
+            WHERE status = 'NO ACTION' 
+            AND created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)
+            ORDER BY created_at ASC
+        `);
+        res.json({ success: true, data: oldInquiries });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

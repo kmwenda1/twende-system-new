@@ -547,6 +547,113 @@ function showSection(sectionId) {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
+
+
+// Load old inquiries that need attention (no reply after 24 hours)
+async function loadOldInquiries() {
+    try {
+        const response = await fetch(`${API_URL}/api/inquiries/old`);
+        const result = await response.json();
+        
+        if (result.success && result.data && result.data.length > 0) {
+            // Show visual notification in UI
+            const inboxSection = document.getElementById('inbox');
+            const oldBadge = document.createElement('span');
+            oldBadge.className = 'badge urgent';
+            oldBadge.textContent = `⚠️ ${result.data.length} old`;
+            oldBadge.style.cssText = 'background: #ef4444; color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; margin-left: 12px;';
+            
+            // Add badge to nav link if not already present
+            const inboxNav = document.querySelector('.nav-link[onclick*="inbox"]');
+            if (inboxNav && !document.querySelector('.badge.urgent')) {
+                inboxNav.appendChild(oldBadge);
+            }
+            
+            // Also show alert on first load
+            if (!sessionStorage.getItem('oldInquiriesShown')) {
+                alert(`⚠️ You have ${result.data.length} inquiry(ies) older than 24 hours that need attention!`);
+                sessionStorage.setItem('oldInquiriesShown', 'true');
+            }
+        }
+    } catch (err) {
+        console.error('Error loading old inquiries:', err);
+    }
+}
+
+// Update loadInquiries to show reply status and old inquiry warning
+function loadInquiries() {
+    const container = document.getElementById('inboxList');
+    
+    if (!allData.inquiries || allData.inquiries.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i data-lucide="inbox"></i>
+                <p>No inquiries yet.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = allData.inquiries.map(i => {
+        // Check if inquiry is old (more than 24 hours without reply)
+        const createdDate = new Date(i.created_at);
+        const now = new Date();
+        const hoursOld = (now - createdDate) / (1000 * 60 * 60);
+        const isOld = hoursOld > 24 && i.status === 'NO ACTION';
+        
+        return `
+            <div class="inquiry-item ${isOld ? 'urgent' : ''}">
+                <div class="inquiry-header">
+                    <div>
+                        <div class="inquiry-client">${i.client_name || 'Unknown'}</div>
+                        <div class="inquiry-date">
+                            ${i.created_at ? new Date(i.created_at).toLocaleDateString() : 'N/A'}
+                            ${isOld ? '<span class="urgent-badge">⚠️ Old</span>' : ''}
+                        </div>
+                    </div>
+                    <span class="status-badge status-${(i.source || 'website').toLowerCase()}">${i.source || 'Website'}</span>
+                </div>
+                <div class="inquiry-message">${i.notes || i.subject || 'No message'}</div>
+                <div class="inquiry-contact">
+                    <strong>Email:</strong> ${i.client_email || 'N/A'} · 
+                    <strong>Phone:</strong> ${i.client_phone || 'N/A'}
+                    ${i.destination ? ` · <strong>Destination:</strong> ${i.destination}` : ''}
+                </div>
+                ${i.reply_notes ? `
+                    <div class="inquiry-reply">
+                        <strong>Reply:</strong> ${i.reply_notes}
+                        <small style="color: var(--gray);">(${new Date(i.replied_at).toLocaleString()})</small>
+                    </div>
+                ` : `
+                    ${isOld ? '<div class="inquiry-reminder">⏰ No reply yet - please respond!</div>' : ''}
+                `}
+            </div>
+        `;
+    }).join('');
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Initialize - add old inquiries check
+document.addEventListener('DOMContentLoaded', async () => {
+    currentUser = JSON.parse(sessionStorage.getItem('twende_user'));
+    
+    if (!currentUser || (currentUser.role !== 'staff' && currentUser.role !== 'admin')) {
+        window.location.href = 'index.html';
+        return;
+    }
+    
+    document.getElementById('staffName').textContent = currentUser.name || 'Staff';
+    document.getElementById('dashStaffName').textContent = currentUser.name || 'Staff';
+    await loadAllData();
+    renderCalendar();
+    loadOldInquiries(); // Check for old inquiries that need attention
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+});
+
+
+
 // Logout
 function logout() {
     sessionStorage.removeItem('twende_user');

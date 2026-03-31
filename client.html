@@ -8,24 +8,38 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-    <header class="client-header">
+    <!-- Sidebar -->
+    <aside class="sidebar">
         <div class="logo">
             <i data-lucide="compass"></i>
             <span>Twende Tours</span>
         </div>
-        <nav class="client-nav">
-            <a href="#" class="nav-link active" onclick="showSection('dashboard')">Dashboard</a>
-            <a href="#" class="nav-link" onclick="showSection('bookings')">My Bookings</a>
-            <a href="#" class="nav-link" onclick="handleLogout()">Logout</a>
+        <nav>
+            <a href="#" class="nav-link active" onclick="showSection('dashboard')">
+                <i data-lucide="layout-dashboard"></i> Dashboard
+            </a>
+            <a href="#" class="nav-link" onclick="showSection('fleet')">
+                <i data-lucide="truck"></i> Fleet
+            </a>
+            <a href="#" class="nav-link" onclick="showSection('bookings')">
+                <i data-lucide="calendar"></i> My Bookings
+            </a>
+            <a href="#" class="nav-link" onclick="showSection('profile')">
+                <i data-lucide="user"></i> Profile
+            </a>
         </nav>
-    </header>
+        <div class="user-info">
+            <span id="userName">Client</span>
+            <button onclick="logout()"><i data-lucide="log-out"></i> Sign Out</button>
+        </div>
+    </aside>
 
-    <main class="client-main">
-        <!-- Dashboard Section -->
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Dashboard -->
         <section id="dashboard" class="section">
-            <h1 id="welcomeMessage">Welcome!</h1>
-            
-            <div class="stats-grid">
+            <h1>Welcome Back!</h1>
+            <div class="stats">
                 <div class="stat-card">
                     <div class="stat-number" id="totalTrips">0</div>
                     <div class="stat-label">Total Trips</div>
@@ -39,16 +53,31 @@
                     <div class="stat-label">Total Spent</div>
                 </div>
             </div>
-
             <button class="btn-primary" onclick="openBookingModal()">
                 <i data-lucide="plus"></i> Book New Safari
             </button>
         </section>
 
-        <!-- Bookings Section -->
+        <!-- Fleet -->
+        <section id="fleet" class="section hidden">
+            <h1>Our Fleet</h1>
+            <div id="fleetGrid" class="fleet-grid"></div>
+        </section>
+
+        <!-- Bookings -->
         <section id="bookings" class="section hidden">
             <h1>My Bookings</h1>
             <div id="bookingsList" class="bookings-list"></div>
+        </section>
+
+        <!-- Profile -->
+        <section id="profile" class="section hidden">
+            <h1>My Profile</h1>
+            <div class="profile-card">
+                <p><strong>Name:</strong> <span id="profileName"></span></p>
+                <p><strong>Email:</strong> <span id="profileEmail"></span></p>
+                <p><strong>Phone:</strong> <span id="profilePhone"></span></p>
+            </div>
         </section>
     </main>
 
@@ -56,17 +85,17 @@
     <div id="bookingModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Book New Safari</h2>
+                <h2>Book Safari</h2>
                 <button onclick="closeBookingModal()">&times;</button>
             </div>
-            <form id="bookingForm">
+            <form id="bookingForm" onsubmit="submitBooking(event)">
                 <div class="form-group">
                     <label>Vehicle</label>
-                    <select id="vehicleId" required></select>
+                    <select id="vehicleSelect" required></select>
                 </div>
                 <div class="form-group">
                     <label>Destination</label>
-                    <input type="text" id="destination" required>
+                    <input type="text" id="destination" required placeholder="e.g., Masai Mara">
                 </div>
                 <div class="form-group">
                     <label>Start Date</label>

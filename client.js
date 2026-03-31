@@ -1,4 +1,4 @@
-const API_URL = 'https://twende-tours-production.up.railway.app';
+const API_URL = 'https://twende-system-new-production.up.railway.app';
 let currentUser = null;
 let allVehicles = [];
 
@@ -10,59 +10,90 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
     
-    document.getElementById('welcomeMessage').textContent = `Jambo, ${currentUser.name}!`;
+    updateUserInfo();
     await loadDashboard();
-    await loadVehicles();
+    await loadFleet();
     
     if (typeof lucide !== 'undefined') lucide.createIcons();
 });
 
-// Load dashboard stats
-async function loadDashboard() {
-    const bookings = await fetch(`${API_URL}/api/bookings`).then(r => r.json());
-    const userBookings = bookings.data?.filter(b => b.user_id === currentUser.id) || [];
-    
-    document.getElementById('totalTrips').textContent = userBookings.length;
-    document.getElementById('upcomingTrips').textContent = userBookings.filter(b => b.status === 'Pending' || b.status === 'Confirmed').length;
-    document.getElementById('totalSpent').textContent = `$${userBookings.reduce((sum, b) => sum + (b.amount || 0), 0)}`;
-    
-    loadBookingsList(userBookings);
-}
-
-// Load bookings list
-function loadBookingsList(bookings) {
-    const container = document.getElementById('bookingsList');
-    container.innerHTML = bookings.map(b => `
-        <div class="booking-card">
-            <h3>${b.destination}</h3>
-            <p>Vehicle: #${b.vehicle_id} | Date: ${b.start_date}</p>
-            <p>Status: <strong>${b.status}</strong></p>
-        </div>
-    `).join('');
-}
-
-// Load vehicles for booking
-async function loadVehicles() {
-    const response = await fetch(`${API_URL}/api/fleet`);
-    const result = await response.json();
-    allVehicles = result.data || [];
-    
-    const select = document.getElementById('vehicleId');
-    select.innerHTML = allVehicles.map(v => 
-        `<option value="${v.id}">${v.name} - $${v.rate}/day</option>`
-    ).join('');
+// Update user info
+function updateUserInfo() {
+    document.getElementById('userName').textContent = currentUser.name || 'Client';
+    document.getElementById('profileName').textContent = currentUser.name || '';
+    document.getElementById('profileEmail').textContent = currentUser.email || '';
+    document.getElementById('profilePhone').textContent = currentUser.phone || '';
 }
 
 // Show/hide sections
 function showSection(sectionId) {
     document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
     document.getElementById(sectionId).classList.remove('hidden');
+    
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    event.target.classList.add('active');
+    event.target.closest('.nav-link').classList.add('active');
+    
+    if (sectionId === 'dashboard') loadDashboard();
+    if (sectionId === 'bookings') loadBookings();
+}
+
+// Load dashboard
+async function loadDashboard() {
+    const bookings = await fetch(`${API_URL}/api/bookings`).then(r => r.json());
+    const userBookings = bookings.data?.filter(b => b.user_id === currentUser.id) || [];
+    
+    document.getElementById('totalTrips').textContent = userBookings.length;
+    document.getElementById('upcomingTrips').textContent = 
+        userBookings.filter(b => b.status === 'Pending' || b.status === 'Confirmed').length;
+    document.getElementById('totalSpent').textContent = 
+        `$${userBookings.reduce((sum, b) => sum + (b.amount || 0), 0)}`;
+}
+
+// Load fleet
+async function loadFleet() {
+    const response = await fetch(`${API_URL}/api/fleet`);
+    const result = await response.json();
+    allVehicles = result.data || [];
+    
+    const grid = document.getElementById('fleetGrid');
+    grid.innerHTML = allVehicles.map(v => `
+        <div class="vehicle-card">
+            <img src="${v.image_url || 'https://via.placeholder.com/400x200'}" alt="${v.name}">
+            <div class="vehicle-info">
+                <h3>${v.name}</h3>
+                <p class="vehicle-type">${v.type}</p>
+                <div class="vehicle-price">$${v.rate}/day</div>
+                <span class="status-badge status-${v.status?.toLowerCase()}">${v.status}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Load bookings
+async function loadBookings() {
+    const response = await fetch(`${API_URL}/api/bookings`);
+    const result = await response.json();
+    const userBookings = result.data?.filter(b => b.user_id === currentUser.id) || [];
+    
+    const list = document.getElementById('bookingsList');
+    list.innerHTML = userBookings.map(b => `
+        <div class="booking-card">
+            <h3>${b.destination}</h3>
+            <p>Vehicle: #${b.vehicle_id}</p>
+            <p>Date: ${b.start_date}</p>
+            <p>Travelers: ${b.travelers}</p>
+            <p>Status: <strong>${b.status}</strong></p>
+        </div>
+    `).join('');
 }
 
 // Booking modal
 function openBookingModal() {
+    const select = document.getElementById('vehicleSelect');
+    select.innerHTML = allVehicles.filter(v => v.status === 'Available').map(v => 
+        `<option value="${v.id}">${v.name} - $${v.rate}/day</option>`
+    ).join('');
+    
     document.getElementById('bookingModal').classList.remove('hidden');
 }
 
@@ -71,17 +102,17 @@ function closeBookingModal() {
 }
 
 // Submit booking
-document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+async function submitBooking(e) {
     e.preventDefault();
     
     const booking = {
         user_id: currentUser.id,
-        vehicle_id: document.getElementById('vehicleId').value,
+        vehicle_id: document.getElementById('vehicleSelect').value,
         destination: document.getElementById('destination').value,
         start_date: document.getElementById('startDate').value,
         end_date: document.getElementById('startDate').value,
         travelers: document.getElementById('travelers').value,
-        amount: allVehicles.find(v => v.id == document.getElementById('vehicleId').value)?.rate || 0
+        amount: allVehicles.find(v => v.id == document.getElementById('vehicleSelect').value)?.rate || 0
     };
     
     const response = await fetch(`${API_URL}/api/bookings`, {
@@ -92,16 +123,16 @@ document.getElementById('bookingForm').addEventListener('submit', async (e) => {
     
     const result = await response.json();
     if (result.success) {
-        alert('Booking submitted! Staff will confirm soon.');
+        alert('Booking submitted successfully!');
         closeBookingModal();
         loadDashboard();
     } else {
         alert('Failed to create booking');
     }
-});
+}
 
 // Logout
-function handleLogout() {
+function logout() {
     sessionStorage.removeItem('twende_user');
     window.location.href = 'index.html';
 }

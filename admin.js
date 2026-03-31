@@ -103,9 +103,19 @@ function loadRecentActivity() {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
-// Load fleet
+// Load fleet - UPDATED
 function loadFleet() {
     const container = document.getElementById('fleetList');
+    
+    if (allData.fleet.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i data-lucide="truck"></i>
+                <p>No vehicles in fleet</p>
+            </div>
+        `;
+        return;
+    }
     
     container.innerHTML = allData.fleet.map(v => `
         <div class="fleet-item">
@@ -119,30 +129,50 @@ function loadFleet() {
                     <option value="Available" ${v.status === 'Available' ? 'selected' : ''}>Available</option>
                     <option value="Booked" ${v.status === 'Booked' ? 'selected' : ''}>Booked</option>
                     <option value="Maintenance" ${v.status === 'Maintenance' ? 'selected' : ''}>Maintenance</option>
+                    <option value="Repair" ${v.status === 'Repair' ? 'selected' : ''}>Repair</option>
                 </select>
             </div>
         </div>
     `).join('');
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // Update fleet status
 async function updateFleetStatus(vehicleId, status) {
     try {
-        await fetch(`${API_URL}/api/fleet/${vehicleId}/status`, {
+        const response = await fetch(`${API_URL}/api/fleet/${vehicleId}/status`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status })
         });
         
-        await loadAllData();
+        const result = await response.json();
+        
+        if (result.success) {
+            await loadAllData();
+        } else {
+            alert('Failed to update fleet status');
+        }
     } catch (err) {
         console.error('Error updating fleet:', err);
+        alert('Connection error');
     }
 }
 
-// Load users
+// Load users - UPDATED
 function loadUsers() {
     const container = document.getElementById('usersList');
+    
+    if (allData.users.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i data-lucide="users"></i>
+                <p>No users found</p>
+            </div>
+        `;
+        return;
+    }
     
     container.innerHTML = allData.users.map(u => `
         <div class="user-item">

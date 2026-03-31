@@ -192,6 +192,20 @@ app.put('/api/inquiries/:id', async (req, res) => {
     }
 });
 
+// ✅ Update Fleet Status Endpoint
+app.put('/api/fleet/:id/status', async (req, res) => {
+    try {
+        const { status } = req.body;
+        const { id } = req.params;
+        
+        await query('UPDATE fleet SET status = ? WHERE id = ?', [status, id]);
+        res.json({ success: true, message: 'Fleet status updated' });
+    } catch (err) {
+        console.error('FLEET STATUS ERROR:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ================= MPESA =================
 app.post('/api/mpesa/stkpush', async (req, res) => {
     res.json({ success: true, message: 'STK Push sent' });

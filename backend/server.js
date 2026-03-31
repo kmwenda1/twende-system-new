@@ -3,6 +3,7 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const path = require('path');
+const axios = require('axios'); // ✅ Added for M-Pesa API calls
 
 const app = express();
 
@@ -117,7 +118,7 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/users', async (req, res) => {
     try {
         const users = await query('SELECT id, name, email, role, phone, created_at, is_approved FROM users ORDER BY created_at DESC');
-        res.json({ success: true, data: users });
+        res.json({ success: true,  users });
     } catch (err) {
         console.error('USERS ERROR:', err);
         res.status(500).json({ error: err.message });
@@ -161,7 +162,7 @@ app.put('/api/staff/:id/approve', async (req, res) => {
 app.get('/api/fleet', async (req, res) => {
     try {
         const fleet = await query('SELECT * FROM fleet ORDER BY name');
-        res.json({ success: true, data: fleet });
+        res.json({ success: true,  fleet });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });
@@ -192,7 +193,7 @@ app.get('/api/bookings', async (req, res) => {
             LEFT JOIN fleet f ON b.vehicle_id = f.id 
             ORDER BY b.created_at DESC
         `);
-        res.json({ success: true, data: bookings });
+        res.json({ success: true,  bookings });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -330,7 +331,7 @@ app.get('/api/bookings/calendar', async (req, res) => {
         sql += ' ORDER BY b.start_date';
         
         const bookings = await query(sql, params);
-        res.json({ success: true, data: bookings });
+        res.json({ success: true,  bookings });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -340,7 +341,7 @@ app.get('/api/bookings/calendar', async (req, res) => {
 app.get('/api/inquiries', async (req, res) => {
     try {
         const inquiries = await query('SELECT * FROM inquiries ORDER BY created_at DESC');
-        res.json({ success: true, data: inquiries });
+        res.json({ success: true,  inquiries });
     } catch (err) {
         console.error('GET INQUIRIES ERROR:', err);
         res.status(500).json({ error: err.message });
@@ -424,7 +425,7 @@ app.get('/api/inquiries/old', async (req, res) => {
             AND created_at < DATE_SUB(NOW(), INTERVAL 24 HOUR)
             ORDER BY created_at ASC
         `);
-        res.json({ success: true, data: oldInquiries });
+        res.json({ success: true,  oldInquiries });
     } catch (err) {
         console.error('OLD INQUIRIES ERROR:', err);
         res.status(500).json({ error: err.message });
@@ -432,8 +433,222 @@ app.get('/api/inquiries/old', async (req, res) => {
 });
 
 // ================= MPESA =================
+// M-Pesa Configuration
+const MPESA_CONSUMER_KEY = process.env.MPESA_CONSUMER_KEY || 'm7NA2lgANcgBc0PqJP16xjxBcOZBM127jIBr3P7Sy5NF1O9r';
+const MPESA_CONSUMER_SECRET = process.env.MPESA_CONSUMER_SECRET || 'MXu3cCruzCApzb1Ijaxx6tAKMWyCod85haJidC3waf2PwD6AVVnCVASzmmb3IZdJ';
+const MPESA_SHORTCODE = process.env.MPESA_SHORTCODE || '174379';
+const MPESA_PASSKEY = process.env.MPESA_PASSKEY || 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919';
+// ✅ Updated to match your current deployment
+const MPESA_CALLBACK_URL = process.env.MPESA_CALLBACK_URL || 'https://twende-system-new-production.up.railway.app/api/mpesa/callback';
+
+// Get M-Pesa Access Token
+async function getMpesaToken() {
+    const auth = Buffer.from(`${MPESA_CONSUMER_KEY}:${MPESA_CONSUMER_SECRET}`).toString('base64');
+    try {
+        const response = await axios.get(
+            'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', 
+            { 
+                headers: { 'Authorization': `Basic ${auth}` }, 
+                timeout: 10000 
+            }
+        );
+        console.log('✅ M-Pesa token obtained');
+        return response.data.access_token;
+    } catch (error) {
+        console.error('❌ M-Pesa Token error:', error.response?.data || error.message);
+        return null;
+    }
+}
+
+// STK Push Endpoint
 app.post('/api/mpesa/stkpush', async (req, res) => {
-    res.json({ success: true, message: 'STK Push sent' });
+    try {
+        const { phone, amount, booking_id } = req.body;
+        
+        if (!phone || !amount || !booking_id) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Required fields missing: phone, amount, booking_id' 
+            });
+        }
+        
+        console.log(`📱 Initiating STK Push for booking #${booking_id}: KES ${amount} to ${phone}`);
+        
+        const accessToken = await getMpesaToken();
+        if (!accessToken) {
+            return res.status(500).json({ 
+                success: false, 
+                error: 'Failed to get M-Pesa access token' 
+            });
+        }
+        
+        const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, -3);
+        const password = Buffer.from(`${MPESA_SHORTCODE}${MPESA_PASSKEY}${timestamp}`).toString('base64');
+        
+        const stkResponse = await axios.post(
+            'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', 
+            {
+                BusinessShortCode: MPESA_SHORTCODE, 
+                Password: password, 
+                Timestamp: timestamp,
+                TransactionType: 'CustomerPayBillOnline', 
+                Amount: parseInt(amount), 
+                PartyA: phone,
+                PartyB: MPESA_SHORTCODE, 
+                PhoneNumber: phone, 
+                CallBackURL: MPESA_CALLBACK_URL,
+                AccountReference: `TWENDE-${booking_id}`, 
+                TransactionDesc: `Twende Tours Booking #${booking_id}`
+            }, 
+            { 
+                headers: { 
+                    'Authorization': `Bearer ${accessToken}`, 
+                    'Content-Type': 'application/json' 
+                }, 
+                timeout: 15000 
+            }
+        );
+        
+        console.log('✅ STK Push initiated:', stkResponse.data);
+        
+        // Update booking to "Awaiting Payment"
+        await query(
+            'UPDATE bookings SET status = "Awaiting Payment" WHERE id = ?',
+            [booking_id]
+        );
+        
+        res.json({ 
+            success: true, 
+            message: 'Payment prompt sent to your phone. Please enter your M-Pesa PIN.',
+            checkoutRequestID: stkResponse.data.CheckoutRequestID,
+            booking_id: booking_id
+        });
+        
+    } catch (error) {
+        console.error('❌ STK Push error:', error.response?.data || error.message);
+        res.status(500).json({ 
+            success: false, 
+            error: error.response?.data?.errorMessage || error.message,
+            message: 'Failed to initiate payment. Please try again.'
+        });
+    }
+});
+
+// Check Payment Status Endpoint
+app.post('/api/mpesa/check-status', async (req, res) => {
+    try {
+        const { checkoutRequestID } = req.body;
+        
+        if (!checkoutRequestID) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'checkoutRequestID is required' 
+            });
+        }
+        
+        const accessToken = await getMpesaToken();
+        if (!accessToken) {
+            return res.status(500).json({ 
+                success: false, 
+                error: 'Failed to get M-Pesa access token' 
+            });
+        }
+        
+        const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, -3);
+        const password = Buffer.from(`${MPESA_SHORTCODE}${MPESA_PASSKEY}${timestamp}`).toString('base64');
+        
+        const statusResponse = await axios.post(
+            'https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query', 
+            {
+                BusinessShortCode: MPESA_SHORTCODE, 
+                Password: password, 
+                Timestamp: timestamp,
+                CheckoutRequestID: checkoutRequestID
+            }, 
+            { 
+                headers: { 
+                    'Authorization': `Bearer ${accessToken}`, 
+                    'Content-Type': 'application/json' 
+                }, 
+                timeout: 15000 
+            }
+        );
+        
+        console.log('📊 Payment status check:', statusResponse.data);
+        
+        res.json({ 
+            success: true, 
+            status: statusResponse.data 
+        });
+        
+    } catch (error) {
+        console.error('❌ Status check error:', error.response?.data || error.message);
+        res.status(500).json({ 
+            success: false, 
+            error: error.response?.data?.errorMessage || error.message 
+        });
+    }
+});
+
+// M-Pesa Callback Handler (Daraja sends payment confirmation here)
+app.post('/api/mpesa/callback', (req, res) => {
+    try {
+        const { Body } = req.body;
+        
+        if (!Body || !Body.stkCallback) {
+            console.error('❌ Invalid callback payload:', req.body);
+            return res.status(400).json({ error: 'Invalid callback' });
+        }
+        
+        const { stkCallback } = Body;
+        const { CheckoutRequestID, ResultCode, ResultDesc } = stkCallback;
+        
+        console.log('📥 M-Pesa Callback received:', { CheckoutRequestID, ResultCode, ResultDesc });
+        
+        if (ResultCode === 0) {
+            // ✅ Payment successful
+            const metadata = stkCallback.CallbackMetadata?.Item || [];
+            const receipt = metadata.find(i => i.Name === 'MpesaReceiptNumber')?.Value;
+            const amount = metadata.find(i => i.Name === 'Amount')?.Value;
+            const phone = metadata.find(i => i.Name === 'PhoneNumber')?.Value;
+            const accountRef = metadata.find(i => i.Name === 'AccountReference')?.Value;
+            
+            // Extract booking ID from account reference (TWENDE-123)
+            const bookingId = accountRef?.replace('TWENDE-', '');
+            
+            console.log('✅ Payment confirmed:', { receipt, amount, phone, bookingId });
+            
+            if (bookingId) {
+                // Update booking to "Paid" and "Confirmed"
+                query(
+                    `UPDATE bookings 
+                     SET status = 'Confirmed', 
+                         payment_status = 'Paid',
+                         mpesa_receipt = ?, 
+                         payment_date = NOW()
+                     WHERE id = ?`,
+                    [receipt, bookingId]
+                ).then(() => {
+                    console.log(`✅ Booking #${bookingId} marked as paid`);
+                    // TODO: Send confirmation email/SMS to client
+                }).catch(err => {
+                    console.error('❌ Error updating booking after payment:', err);
+                });
+            }
+        } else {
+            // ❌ Payment failed/cancelled
+            console.log('❌ Payment failed:', ResultDesc);
+            
+            // TODO: Update booking status to 'Payment Failed' and notify staff
+        }
+        
+        // Always respond with success to Daraja
+        res.json({ ResultCode: 0, ResultDesc: 'Success' });
+        
+    } catch (err) {
+        console.error('❌ Callback handler error:', err);
+        res.status(500).json({ ResultCode: 1, ResultDesc: 'Error' });
+    }
 });
 
 // ================= TEMP PASSWORD RESET =================

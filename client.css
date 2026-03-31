@@ -80,7 +80,7 @@ body {
 }
 
 .section { margin-bottom: 32px; }
-.hidden { display: none; }
+.hidden { display: none !important; }
 
 h1 {
     color: var(--navy);
@@ -229,7 +229,7 @@ h1 {
     color: var(--navy);
 }
 
-/* Modal */
+/* Modal - FIXED */
 .modal {
     position: fixed;
     top: 0;
@@ -243,12 +243,18 @@ h1 {
     z-index: 1000;
 }
 
+.modal.hidden {
+    display: none !important;
+}
+
 .modal-content {
     background: white;
     padding: 32px;
     border-radius: 12px;
     width: 100%;
     max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .modal-header {
@@ -258,11 +264,28 @@ h1 {
     margin-bottom: 24px;
 }
 
-.modal-header button {
+.modal-header h2 {
+    color: var(--navy);
+    margin: 0;
+}
+
+.close-btn {
     background: none;
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
+    color: #64748b;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+}
+
+.close-btn:hover {
+    background: #f1f5f9;
+    color: var(--navy);
 }
 
 .form-group {

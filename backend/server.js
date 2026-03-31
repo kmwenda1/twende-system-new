@@ -117,7 +117,7 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/users', async (req, res) => {
     try {
         const users = await query('SELECT id, name, email, role, phone, created_at, is_approved FROM users ORDER BY created_at DESC');
-        res.json({ success: true, data: users });  // ✅ Changed to 'data'
+        res.json({ success: true, data: users });
     } catch (err) {
         console.error('USERS ERROR:', err);
         res.status(500).json({ error: err.message });
@@ -142,19 +142,14 @@ app.put('/api/staff/:id/approve', async (req, res) => {
         const { id } = req.params;
         const { approved } = req.body;
         
-        console.log(`Updating staff ${id} approval to: ${approved}`);
-        
-        const result = await query(
+        await query(
             'UPDATE users SET is_approved = ? WHERE id = ? AND role = "staff"', 
             [approved ? 1 : 0, id]
         );
         
-        console.log('Approval update result:', result);
-        
         res.json({ 
             success: true, 
-            message: approved ? 'Staff approved successfully' : 'Staff rejected',
-            result 
+            message: approved ? 'Staff approved successfully' : 'Staff rejected'
         });
     } catch (err) {
         console.error('STAFF APPROVAL ERROR:', err);
@@ -178,13 +173,9 @@ app.put('/api/fleet/:id/status', async (req, res) => {
         const { status } = req.body;
         const { id } = req.params;
         
-        console.log(`Updating fleet ${id} to status: ${status}`);
+        await query('UPDATE fleet SET status = ? WHERE id = ?', [status, id]);
         
-        const result = await query('UPDATE fleet SET status = ? WHERE id = ?', [status, id]);
-        
-        console.log('Update result:', result);
-        
-        res.json({ success: true, message: 'Fleet status updated', result });
+        res.json({ success: true, message: 'Fleet status updated' });
     } catch (err) {
         console.error('FLEET STATUS ERROR:', err);
         res.status(500).json({ error: err.message, success: false });
@@ -194,20 +185,91 @@ app.put('/api/fleet/:id/status', async (req, res) => {
 // ================= BOOKINGS =================
 app.get('/api/bookings', async (req, res) => {
     try {
-        const bookings = await query('SELECT * FROM bookings ORDER BY created_at DESC');
-        res.json({ success: true, data: bookings });  // ✅ Changed to 'data'
+        const bookings = await query(`
+            SELECT b.*, u.name as client_name, f.name as vehicle_name 
+            FROM bookings b 
+            LEFT JOIN users u ON b.user_id = u.id 
+            LEFT JOIN fleet f ON b.vehicle_id = f.id 
+            ORDER BY b.created_at DESC
+        `);
+        res.json({ success: true, data: bookings });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
+// Check date overlap before creating booking
+app.post('/api/bookings/check-availability', async (req, res) => {
+    try {
+        const { vehicle_id, start_date, end_date, exclude_booking_id } = req.body;
+        
+        let sql = `
+            SELECT * FROM bookings 
+            WHERE vehicle_id = ? 
+            AND status != 'Cancelled'
+            AND (
+                (start_date <= ? AND end_date >= ?) OR
+                (start_date <= ? AND end_date >= ?) OR
+                (start_date >= ? AND end_date <= ?)
+            )
+        `;
+        
+        const params = [
+            vehicle_id,
+            end_date, start_date,
+            start_date, end_date,
+            start_date, end_date
+        ];
+        
+        if (exclude_booking_id) {
+            sql += ' AND id != ?';
+            params.push(exclude_booking_id);
+        }
+        
+        const conflicts = await query(sql, params);
+        
+        res.json({ 
+            success: true, 
+            available: conflicts.length === 0,
+            conflicts: conflicts
+        });
+    } catch (err) {
+        console.error('AVAILABILITY CHECK ERROR:', err);
+        res.status(500).json({ error: err.message, success: false });
+    }
+});
+
 app.post('/api/bookings', async (req, res) => {
     try {
-        const { user_id, vehicle_id, destination, start_date, end_date, travelers, amount } = req.body;
+        const { user_id, vehicle_id, destination, start_date, end_date, travelers, amount, notes } = req.body;
+
+        // Check for date overlap
+        const availability = await query(`
+            SELECT * FROM bookings 
+            WHERE vehicle_id = ? 
+            AND status != 'Cancelled'
+            AND (
+                (start_date <= ? AND end_date >= ?) OR
+                (start_date <= ? AND end_date >= ?) OR
+                (start_date >= ? AND end_date <= ?)
+            )
+        `, [
+            vehicle_id,
+            end_date, start_date,
+            start_date, end_date,
+            start_date, end_date
+        ]);
+        
+        if (availability.length > 0) {
+            return res.json({ 
+                success: false, 
+                message: 'Vehicle is not available for selected dates. Please choose different dates or vehicle.' 
+            });
+        }
 
         const result = await query(
-            'INSERT INTO bookings (user_id, vehicle_id, destination, start_date, end_date, travelers, amount, status) VALUES (?, ?, ?, ?, ?, ?, ?, "Pending")',
-            [user_id, vehicle_id, destination, start_date, end_date, travelers, amount]
+            'INSERT INTO bookings (user_id, vehicle_id, destination, start_date, end_date, travelers, amount, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, "Pending", ?)',
+            [user_id, vehicle_id, destination, start_date, end_date, travelers, amount, notes || '']
         );
 
         res.json({ success: true, bookingId: result.insertId });
@@ -217,10 +279,63 @@ app.post('/api/bookings', async (req, res) => {
     }
 });
 
+// Approve/Reject booking
 app.put('/api/bookings/:id/status', async (req, res) => {
     try {
-        await query('UPDATE bookings SET status = ? WHERE id = ?', [req.body.status, req.params.id]);
+        const { status } = req.body;
+        const { id } = req.params;
+        
+        // Valid statuses: Pending, Confirmed, Completed, Cancelled
+        const validStatuses = ['Pending', 'Confirmed', 'Completed', 'Cancelled'];
+        if (!validStatuses.includes(status)) {
+            return res.status(400).json({ success: false, message: 'Invalid status' });
+        }
+        
+        await query('UPDATE bookings SET status = ? WHERE id = ?', [status, id]);
+        
+        // If booking is confirmed, update vehicle status to Booked
+        if (status === 'Confirmed') {
+            const [booking] = await query('SELECT vehicle_id FROM bookings WHERE id = ?', [id]);
+            if (booking) {
+                await query('UPDATE fleet SET status = "Booked" WHERE id = ?', [booking.vehicle_id]);
+            }
+        }
+        
         res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get bookings for calendar
+app.get('/api/bookings/calendar', async (req, res) => {
+    try {
+        const { vehicle_id, month, year } = req.query;
+        
+        let sql = `
+            SELECT b.*, u.name as client_name, f.name as vehicle_name 
+            FROM bookings b 
+            LEFT JOIN users u ON b.user_id = u.id 
+            LEFT JOIN fleet f ON b.vehicle_id = f.id 
+            WHERE b.status != 'Cancelled'
+        `;
+        
+        const params = [];
+        
+        if (vehicle_id) {
+            sql += ' AND b.vehicle_id = ?';
+            params.push(vehicle_id);
+        }
+        
+        if (month && year) {
+            sql += ` AND MONTH(b.start_date) = ? AND YEAR(b.start_date) = ?`;
+            params.push(parseInt(month), parseInt(year));
+        }
+        
+        sql += ' ORDER BY b.start_date';
+        
+        const bookings = await query(sql, params);
+        res.json({ success: true, data: bookings });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -230,7 +345,7 @@ app.put('/api/bookings/:id/status', async (req, res) => {
 app.get('/api/inquiries', async (req, res) => {
     try {
         const inquiries = await query('SELECT * FROM inquiries ORDER BY created_at DESC');
-        res.json({ success: true, data: inquiries });  // ✅ Changed to 'data'
+        res.json({ success: true, data: inquiries });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

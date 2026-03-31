@@ -29,6 +29,9 @@
             <a href="#" class="nav-link active" onclick="showSection('dashboard')">
                 <i data-lucide="layout-grid"></i> Dashboard
             </a>
+            <a href="#" class="nav-link" onclick="showSection('calendar')">
+                <i data-lucide="calendar"></i> Calendar
+            </a>
             <a href="#" class="nav-link" onclick="showSection('inbox')">
                 <i data-lucide="inbox"></i> Social Inbox
             </a>
@@ -84,12 +87,43 @@
             </div>
 
             <div class="recent-section">
-                <h2>Your Schedule</h2>
-                <div id="recentBookings" class="schedule-container">
+                <h2>Pending Approvals</h2>
+                <div id="pendingBookings" class="schedule-container">
                     <div class="empty-state">
-                        <i data-lucide="map-pin" class="empty-icon"></i>
-                        <p>No safaris booked yet. Browse the fleet to get started!</p>
+                        <i data-lucide="check-circle" class="empty-icon"></i>
+                        <p>No pending bookings to approve</p>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Calendar -->
+        <section id="calendar" class="section hidden">
+            <div class="section-header">
+                <h1>Booking Calendar</h1>
+                <p class="subtitle">View all bookings by date</p>
+            </div>
+            
+            <div class="card">
+                <div class="calendar-header">
+                    <button onclick="changeMonth(-1)" class="btn-icon">
+                        <i data-lucide="chevron-left"></i>
+                    </button>
+                    <h2 id="calendarMonth">March 2026</h2>
+                    <button onclick="changeMonth(1)" class="btn-icon">
+                        <i data-lucide="chevron-right"></i>
+                    </button>
+                </div>
+                
+                <div class="calendar-grid">
+                    <div class="calendar-day-header">Sun</div>
+                    <div class="calendar-day-header">Mon</div>
+                    <div class="calendar-day-header">Tue</div>
+                    <div class="calendar-day-header">Wed</div>
+                    <div class="calendar-day-header">Thu</div>
+                    <div class="calendar-day-header">Fri</div>
+                    <div class="calendar-day-header">Sat</div>
+                    <div id="calendarDays" class="calendar-days"></div>
                 </div>
             </div>
         </section>
@@ -130,9 +164,10 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Vehicle</label>
-                            <select id="bookingVehicle" required>
+                            <select id="bookingVehicle" required onchange="checkAvailability()">
                                 <option value="">Select vehicle</option>
                             </select>
+                            <small id="availabilityMessage" class="form-message"></small>
                         </div>
                         <div class="form-group">
                             <label>Client Name</label>
@@ -152,14 +187,18 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Start Date</label>
-                            <input type="date" id="bookingStart" required>
+                            <input type="date" id="bookingStart" required onchange="checkAvailability()">
                         </div>
                         <div class="form-group">
                             <label>End Date</label>
-                            <input type="date" id="bookingEnd" required>
+                            <input type="date" id="bookingEnd" required onchange="checkAvailability()">
                         </div>
                     </div>
-                    <button type="submit" class="btn-primary">Confirm Booking</button>
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea id="bookingNotes" rows="3" placeholder="Additional notes..."></textarea>
+                    </div>
+                    <button type="submit" class="btn-primary">Create Booking</button>
                 </form>
             </div>
 
@@ -169,6 +208,25 @@
             </div>
         </section>
     </main>
+
+    <!-- Booking Detail Modal -->
+    <div id="bookingModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Booking Details</h2>
+                <button type="button" onclick="closeBookingModal()" class="close-btn">&times;</button>
+            </div>
+            <div id="bookingDetails" class="booking-details"></div>
+            <div class="modal-actions">
+                <button onclick="approveBooking('Confirmed')" class="btn-approve">
+                    <i data-lucide="check"></i> Approve
+                </button>
+                <button onclick="approveBooking('Cancelled')" class="btn-reject">
+                    <i data-lucide="x"></i> Reject
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script src="staff.js"></script>
 </body>

@@ -5,6 +5,9 @@ let allData = {
     fleet: [],
     inquiries: []
 };
+let currentMonth = new Date().getMonth() + 1;
+let currentYear = new Date().getFullYear();
+let selectedBookingId = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
@@ -18,6 +21,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('staffName').textContent = currentUser.name || 'Staff';
     document.getElementById('dashStaffName').textContent = currentUser.name || 'Staff';
     await loadAllData();
+    renderCalendar();
     
     if (typeof lucide !== 'undefined') lucide.createIcons();
 });
@@ -45,6 +49,9 @@ async function loadAllData() {
         loadFleet();
         loadInquiries();
         loadBookings();
+        loadPendingBookings();
+        populateVehicleSelect();
+        renderCalendar();
         
         if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch (err) {
@@ -63,31 +70,273 @@ function updateDashboard() {
     document.getElementById('activeTrips').textContent = active;
     document.getElementById('totalSafaris').textContent = total;
     document.getElementById('completedTrips').textContent = completed;
+}
+
+// Load pending bookings for approval
+function loadPendingBookings() {
+    const container = document.getElementById('pendingBookings');
+    const pending = allData.bookings.filter(b => b.status === 'Pending');
     
-    // Load recent bookings
-    const recentContainer = document.getElementById('recentBookings');
-    const recent = bookings.slice(0, 3);
-    
-    if (recent.length === 0) {
-        recentContainer.innerHTML = `
+    if (pending.length === 0) {
+        container.innerHTML = `
             <div class="empty-state">
-                <i data-lucide="map-pin" class="empty-icon"></i>
-                <p>No safaris booked yet. Browse the fleet to get started!</p>
+                <i data-lucide="check-circle" class="empty-icon"></i>
+                <p>No pending bookings to approve</p>
             </div>
         `;
-    } else {
-        recentContainer.innerHTML = recent.map(b => `
-            <div class="booking-item">
-                <div class="booking-info">
-                    <div class="booking-client">${b.destination}</div>
-                    <div class="booking-details">${b.start_date} - ${b.end_date}</div>
-                </div>
-                <span class="status-badge status-${b.status?.toLowerCase()}">${b.status}</span>
-            </div>
-        `).join('');
+        return;
     }
     
+    container.innerHTML = pending.map(booking => `
+        <div class="pending-booking-card">
+            <div class="pending-booking-header">
+                <div>
+                    <div class="pending-booking-client">${booking.client_name || 'Unknown Client'}</div>
+                    <div class="pending-booking-dates">
+                        ${booking.destination} · ${formatDate(booking.start_date)} - ${formatDate(booking.end_date)}
+                    </div>
+                    <div class="pending-booking-dates">
+                        Vehicle: ${booking.vehicle_name || `#${booking.vehicle_id}`} · ${booking.travelers} travelers
+                    </div>
+                </div>
+                <span class="status-badge status-pending">Pending</span>
+            </div>
+            ${booking.notes ? `<p style="color: var(--gray); margin: 12px 0;">${booking.notes}</p>` : ''}
+            <div class="pending-booking-actions">
+                <button onclick="viewBooking(${booking.id})" class="btn-primary btn-small">
+                    <i data-lucide="eye"></i> View Details
+                </button>
+                <button onclick="quickApprove(${booking.id}, 'Confirmed')" class="btn-approve btn-small">
+                    <i data-lucide="check"></i> Approve
+                </button>
+                <button onclick="quickApprove(${booking.id}, 'Cancelled')" class="btn-reject btn-small">
+                    <i data-lucide="x"></i> Reject
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
     if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// View booking details
+function viewBooking(bookingId) {
+    const booking = allData.bookings.find(b => b.id === bookingId);
+    if (!booking) return;
+    
+    selectedBookingId = bookingId;
+    
+    const details = document.getElementById('bookingDetails');
+    details.innerHTML = `
+        <div class="detail-row">
+            <span class="detail-label">Client</span>
+            <span class="detail-value">${booking.client_name || 'Unknown'}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Destination</span>
+            <span class="detail-value">${booking.destination}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Vehicle</span>
+            <span class="detail-value">${booking.vehicle_name || `#${booking.vehicle_id}`}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Dates</span>
+            <span class="detail-value">${formatDate(booking.start_date)} - ${formatDate(booking.end_date)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Travelers</span>
+            <span class="detail-value">${booking.travelers}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Amount</span>
+            <span class="detail-value">$${booking.amount}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Status</span>
+            <span class="detail-value"><span class="status-badge status-${booking.status.toLowerCase()}">${booking.status}</span></span>
+        </div>
+        ${booking.notes ? `
+        <div class="detail-row" style="flex-direction: column; align-items: flex-start;">
+            <span class="detail-label" style="margin-bottom: 8px;">Notes</span>
+            <span class="detail-value">${booking.notes}</span>
+        </div>
+        ` : ''}
+    `;
+    
+    document.getElementById('bookingModal').classList.remove('hidden');
+}
+
+// Close booking modal
+function closeBookingModal() {
+    document.getElementById('bookingModal').classList.add('hidden');
+    selectedBookingId = null;
+}
+
+// Approve booking
+async function approveBooking(status) {
+    if (!selectedBookingId) return;
+    
+    try {
+        const response = await fetch(`${API_URL}/api/bookings/${selectedBookingId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`Booking ${status === 'Confirmed' ? 'approved' : 'rejected'} successfully!`);
+            closeBookingModal();
+            await loadAllData();
+        } else {
+            alert('Failed to update booking');
+        }
+    } catch (err) {
+        console.error('Error approving booking:', err);
+        alert('Connection error');
+    }
+}
+
+// Quick approve from dashboard
+async function quickApprove(bookingId, status) {
+    if (!confirm(`Are you sure you want to ${status === 'Confirmed' ? 'approve' : 'reject'} this booking?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/bookings/${bookingId}/status`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert(`Booking ${status === 'Confirmed' ? 'approved' : 'rejected'} successfully!`);
+            await loadAllData();
+        } else {
+            alert('Failed to update booking');
+        }
+    } catch (err) {
+        console.error('Error approving booking:', err);
+        alert('Connection error');
+    }
+}
+
+// Check availability before creating booking
+async function checkAvailability() {
+    const vehicleId = document.getElementById('bookingVehicle').value;
+    const startDate = document.getElementById('bookingStart').value;
+    const endDate = document.getElementById('bookingEnd').value;
+    const messageEl = document.getElementById('availabilityMessage');
+    
+    if (!vehicleId || !startDate || !endDate) {
+        messageEl.textContent = '';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_URL}/api/bookings/check-availability`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                vehicle_id: vehicleId,
+                start_date: startDate,
+                end_date: endDate
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.available) {
+            messageEl.textContent = '✓ Vehicle is available for selected dates';
+            messageEl.className = 'form-message success';
+        } else {
+            messageEl.textContent = '✗ Vehicle is not available for selected dates';
+            messageEl.className = 'form-message error';
+        }
+    } catch (err) {
+        console.error('Error checking availability:', err);
+    }
+}
+
+// Render calendar
+function renderCalendar() {
+    const calendarDays = document.getElementById('calendarDays');
+    const calendarMonth = document.getElementById('calendarMonth');
+    
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    calendarMonth.textContent = `${monthNames[currentMonth - 1]} ${currentYear}`;
+    
+    const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+    
+    let html = '';
+    
+    // Empty days
+    for (let i = 0; i < firstDay; i++) {
+        html += '<div class="calendar-day empty"></div>';
+    }
+    
+    // Days with bookings
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const dayBookings = allData.bookings.filter(b => {
+            const start = new Date(b.start_date);
+            const end = new Date(b.end_date);
+            const current = new Date(dateStr);
+            return current >= start && current <= end && b.status !== 'Cancelled';
+        });
+        
+        const isToday = new Date().toDateString() === new Date(currentYear, currentMonth - 1, day).toDateString();
+        
+        html += `
+            <div class="calendar-day ${isToday ? 'today' : ''}">
+                <div class="calendar-day-number">${day}</div>
+                ${dayBookings.map(b => `
+                    <div class="calendar-booking ${b.status.toLowerCase()}">
+                        ${b.client_name || 'Booking'}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+    
+    calendarDays.innerHTML = html;
+}
+
+// Change month in calendar
+function changeMonth(delta) {
+    currentMonth += delta;
+    if (currentMonth > 12) {
+        currentMonth = 1;
+        currentYear++;
+    } else if (currentMonth < 1) {
+        currentMonth = 12;
+        currentYear--;
+    }
+    renderCalendar();
+}
+
+// Format date
+function formatDate(dateStr) {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+// Populate vehicle select
+function populateVehicleSelect() {
+    const select = document.getElementById('bookingVehicle');
+    select.innerHTML = '<option value="">Select vehicle</option>' +
+        allData.fleet.filter(v => v.status === 'Available').map(v => 
+            `<option value="${v.id}">${v.name} - $${v.rate}/day</option>`
+        ).join('');
 }
 
 // Load fleet
@@ -182,14 +431,6 @@ function loadInquiries() {
 // Load bookings
 function loadBookings() {
     const container = document.getElementById('bookingsList');
-    const vehicleSelect = document.getElementById('bookingVehicle');
-    
-    if (!vehicleSelect) return;
-    
-    vehicleSelect.innerHTML = '<option value="">Select vehicle</option>' +
-        (allData.fleet || []).filter(v => v.status === 'Available').map(v => 
-            `<option value="${v.id}">${v.name} - $${v.rate}/day</option>`
-        ).join('');
     
     if (!allData.bookings || allData.bookings.length === 0) {
         container.innerHTML = `
@@ -204,27 +445,69 @@ function loadBookings() {
     container.innerHTML = allData.bookings.map(b => `
         <div class="booking-item">
             <div class="booking-info">
-                <div class="booking-client">${b.destination}</div>
-                <div class="booking-details">${b.start_date} to ${b.end_date} · ${b.travelers} travelers</div>
+                <div class="booking-client">${b.client_name || 'Unknown Client'}</div>
+                <div class="booking-details">
+                    ${b.destination} · ${formatDate(b.start_date)} - ${formatDate(b.end_date)}
+                </div>
+                <div class="booking-details">
+                    Vehicle: ${b.vehicle_name || `#${b.vehicle_id}`} · ${b.travelers} travelers
+                </div>
             </div>
-            <span class="status-badge status-${(b.status || 'pending').toLowerCase()}">${b.status || 'Pending'}</span>
+            <div style="text-align: right;">
+                <span class="status-badge status-${(b.status || 'pending').toLowerCase()}">${b.status || 'Pending'}</span>
+                ${b.status === 'Pending' ? `
+                    <div style="margin-top: 8px;">
+                        <button onclick="quickApprove(${b.id}, 'Confirmed')" class="btn-approve btn-small" style="margin-right: 8px;">
+                            <i data-lucide="check" width="14"></i>
+                        </button>
+                        <button onclick="quickApprove(${b.id}, 'Cancelled')" class="btn-reject btn-small">
+                            <i data-lucide="x" width="14"></i>
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
         </div>
     `).join('');
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // Create booking
 async function createBooking(e) {
     e.preventDefault();
     
+    // Check availability first
+    const vehicleId = document.getElementById('bookingVehicle').value;
+    const startDate = document.getElementById('bookingStart').value;
+    const endDate = document.getElementById('bookingEnd').value;
+    
+    const availabilityResponse = await fetch(`${API_URL}/api/bookings/check-availability`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            vehicle_id: vehicleId,
+            start_date: startDate,
+            end_date: endDate
+        })
+    });
+    
+    const availability = await availabilityResponse.json();
+    
+    if (!availability.available) {
+        alert('Vehicle is not available for selected dates. Please choose different dates or vehicle.');
+        return;
+    }
+    
     const booking = {
         user_id: currentUser.id,
-        vehicle_id: document.getElementById('bookingVehicle').value,
+        vehicle_id: vehicleId,
         destination: document.getElementById('bookingDestination').value,
-        start_date: document.getElementById('bookingStart').value,
-        end_date: document.getElementById('bookingEnd').value,
+        start_date: startDate,
+        end_date: endDate,
         travelers: document.getElementById('bookingTravelers').value,
-        amount: allData.fleet.find(v => v.id == document.getElementById('bookingVehicle').value)?.rate || 0,
-        status: 'Confirmed'
+        amount: allData.fleet.find(v => v.id == vehicleId)?.rate || 0,
+        notes: document.getElementById('bookingNotes').value,
+        status: 'Pending'
     };
     
     try {
@@ -237,11 +520,11 @@ async function createBooking(e) {
         const result = await response.json();
         
         if (result.success) {
-            alert('Booking created successfully!');
+            alert('Booking created successfully! Awaiting approval.');
             document.getElementById('bookingForm').reset();
             await loadAllData();
         } else {
-            alert('Failed to create booking');
+            alert(result.message || 'Failed to create booking');
         }
     } catch (error) {
         console.error('Booking error:', error);
@@ -256,6 +539,10 @@ function showSection(sectionId) {
     
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
     event?.target?.closest('.nav-link')?.classList.add('active');
+    
+    if (sectionId === 'calendar') {
+        renderCalendar();
+    }
     
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }

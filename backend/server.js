@@ -124,17 +124,22 @@ app.get('/api/fleet', async (req, res) => {
     }
 });
 
-// ✅ NEW: Update Fleet Status Endpoint
+// ✅ Update Fleet Status Endpoint (ONLY ONE - removed duplicate)
 app.put('/api/fleet/:id/status', async (req, res) => {
     try {
         const { status } = req.body;
         const { id } = req.params;
         
-        await query('UPDATE fleet SET status = ? WHERE id = ?', [status, id]);
-        res.json({ success: true, message: 'Fleet status updated' });
+        console.log(`Updating fleet ${id} to status: ${status}`);
+        
+        const result = await query('UPDATE fleet SET status = ? WHERE id = ?', [status, id]);
+        
+        console.log('Update result:', result);
+        
+        res.json({ success: true, message: 'Fleet status updated', result });
     } catch (err) {
         console.error('FLEET STATUS ERROR:', err);
-        res.status(500).json({ error: err.message });
+        res.status(500).json({ error: err.message, success: false });
     }
 });
 
@@ -188,20 +193,6 @@ app.put('/api/inquiries/:id', async (req, res) => {
         await query('UPDATE inquiries SET status = ? WHERE id = ?', [req.body.status, req.params.id]);
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// ✅ Update Fleet Status Endpoint
-app.put('/api/fleet/:id/status', async (req, res) => {
-    try {
-        const { status } = req.body;
-        const { id } = req.params;
-        
-        await query('UPDATE fleet SET status = ? WHERE id = ?', [status, id]);
-        res.json({ success: true, message: 'Fleet status updated' });
-    } catch (err) {
-        console.error('FLEET STATUS ERROR:', err);
         res.status(500).json({ error: err.message });
     }
 });

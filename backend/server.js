@@ -342,14 +342,16 @@ app.get('/api/inquiries', async (req, res) => {
         const inquiries = await query('SELECT * FROM inquiries ORDER BY created_at DESC');
         res.json({ success: true, data: inquiries });
     } catch (err) {
+        console.error('GET INQUIRIES ERROR:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
-// Create inquiry - FIXED
 app.post('/api/inquiries', async (req, res) => {
     try {
         const { client_name, client_email, client_phone, destination, notes, source, subject } = req.body;
+        
+        console.log('📩 Received inquiry:', { client_name, client_email, source, subject });
         
         if (!client_name || !client_email || !notes) {
             return res.status(400).json({ 
@@ -359,8 +361,9 @@ app.post('/api/inquiries', async (req, res) => {
         }
         
         const result = await query(
-            `INSERT INTO inquiries (client_name, client_email, client_phone, destination, notes, source, subject, status) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'NO ACTION')`,
+            `INSERT INTO inquiries 
+             (client_name, client_email, client_phone, destination, notes, source, subject, status, created_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'NO ACTION', NOW())`,
             [
                 client_name,
                 client_email,
@@ -372,22 +375,29 @@ app.post('/api/inquiries', async (req, res) => {
             ]
         );
         
+        console.log('✅ Inquiry created with ID:', result.insertId);
+        
         res.json({ 
             success: true, 
             message: 'Inquiry submitted successfully',
             inquiryId: result.insertId 
         });
     } catch (err) {
-        console.error('INQUIRY ERROR:', err);
-        res.status(500).json({ success: false, message: 'Failed to submit inquiry' });
+        console.error('❌ INQUIRY ERROR:', err);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to submit inquiry',
+            error: err.message 
+        });
     }
 });
 
-// Update inquiry status
 app.put('/api/inquiries/:id', async (req, res) => {
     try {
         const { status, reply_notes } = req.body;
         const { id } = req.params;
+        
+        console.log(`🔄 Updating inquiry ${id} to status: ${status}`);
         
         if (reply_notes) {
             await query(
@@ -398,13 +408,14 @@ app.put('/api/inquiries/:id', async (req, res) => {
             await query('UPDATE inquiries SET status = ? WHERE id = ?', [status, id]);
         }
         
+        console.log('✅ Inquiry updated successfully');
         res.json({ success: true });
     } catch (err) {
+        console.error('❌ UPDATE INQUIRY ERROR:', err);
         res.status(500).json({ error: err.message });
     }
 });
 
-// Get old inquiries that need reminders (no reply after 24 hours)
 app.get('/api/inquiries/old', async (req, res) => {
     try {
         const oldInquiries = await query(`
@@ -415,6 +426,7 @@ app.get('/api/inquiries/old', async (req, res) => {
         `);
         res.json({ success: true, data: oldInquiries });
     } catch (err) {
+        console.error('OLD INQUIRIES ERROR:', err);
         res.status(500).json({ error: err.message });
     }
 });

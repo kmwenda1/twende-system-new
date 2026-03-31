@@ -275,7 +275,7 @@ async function submitBooking(e) {
     }
 }
 
-// Submit inquiry - FIXED
+// Submit inquiry
 async function submitInquiry(e) {
     e.preventDefault();
     
@@ -285,9 +285,11 @@ async function submitInquiry(e) {
         client_phone: currentUser.phone || '',
         subject: document.getElementById('inquirySubject').value,
         notes: document.getElementById('inquiryMessage').value,
-        source: document.getElementById('inquirySource').value || 'Website',
+        source: document.getElementById('inquirySource')?.value || 'Website',
         destination: document.getElementById('inquiryDestination')?.value || ''
     };
+    
+    console.log('📤 Submitting inquiry:', inquiry);
     
     try {
         const response = await fetch(`${API_URL}/api/inquiries`, {
@@ -296,17 +298,19 @@ async function submitInquiry(e) {
             body: JSON.stringify(inquiry)
         });
         
+        console.log('📥 Response status:', response.status);
         const result = await response.json();
+        console.log('📥 Response data:', result);
         
         if (result.success) {
-            alert('Inquiry submitted! We\'ll get back to you soon.');
+            alert('✅ Inquiry submitted successfully! We\'ll get back to you soon.');
             closeInquiryModal();
             loadInquiries();
         } else {
-            alert('Failed to submit inquiry: ' + (result.message || 'Unknown error'));
+            alert('❌ Failed to submit inquiry: ' + (result.message || 'Unknown error'));
         }
     } catch (error) {
-        console.error('Inquiry error:', error);
+        console.error('❌ Inquiry error:', error);
         alert('Connection error. Please try again.');
     }
 }

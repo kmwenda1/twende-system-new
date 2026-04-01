@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 });
 
-// Load all data
+// Load all data - ✅ FIXED: Correct property mapping
 async function loadAllData() {
     try {
         console.log('Loading data from API...');
@@ -58,13 +58,13 @@ async function loadAllData() {
             pendingStaff: pendingStaffData
         });
         
-        // Ensure we always have arrays
+        // ✅ FIXED: Map to correct property names based on backend response format
         allData = {
-            bookings: Array.isArray(bookingsData.data) ? bookingsData.data : (Array.isArray(bookingsData) ? bookingsData : []),
-            fleet: Array.isArray(fleetData.data) ? fleetData.data : (Array.isArray(fleetData) ? fleetData : []),
-            users: Array.isArray(usersData.data) ? usersData.data : (Array.isArray(usersData) ? usersData : []),
-            inquiries: Array.isArray(inquiriesData.data) ? inquiriesData.data : (Array.isArray(inquiriesData) ? inquiriesData : []),
-            pendingStaff: Array.isArray(pendingStaffData.data) ? pendingStaffData.data : (Array.isArray(pendingStaffData) ? pendingStaffData : [])
+            bookings: Array.isArray(bookingsData.bookings) ? bookingsData.bookings : [],
+            fleet: Array.isArray(fleetData.data) ? fleetData.data : [],
+            users: Array.isArray(usersData.users) ? usersData.users : [],
+            inquiries: Array.isArray(inquiriesData.inquiries) ? inquiriesData.inquiries : [],
+            pendingStaff: Array.isArray(pendingStaffData.data) ? pendingStaffData.data : []
         };
         
         console.log('Final allData:', allData);

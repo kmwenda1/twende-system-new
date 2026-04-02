@@ -333,7 +333,39 @@ body {
     width: 100%;
     height: 220px;
     object-fit: cover;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--navy-dark) 0%, #2d5986 100%);
+}
+
+/* Category-specific gradient backgrounds for the CSS icon cards */
+.vehicle-img-4wd {
+    background: linear-gradient(135deg, var(--navy-dark) 0%, #2d6a8f 60%, var(--gold) 100%);
+}
+
+.vehicle-img-van {
+    background: linear-gradient(135deg, #065f46 0%, #10b981 100%);
+}
+
+.vehicle-img-bus {
+    background: linear-gradient(135deg, #1a365d 0%, #4a5568 100%);
+}
+
+.vehicle-img-icon {
+    width: 72px;
+    height: 72px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.vehicle-img-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-top: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
 }
 
 .vehicle-info {

@@ -83,6 +83,35 @@ async function loadDashboard() {
     }
 }
 
+// Return a safari-appropriate image URL based on the vehicle type and name.
+// If the vehicle has an image_url stored in the database, that takes priority.
+// Otherwise a keyword-based image service (loremflickr) is used so that the
+// correct vehicle category is always shown. A seed derived from the vehicle ID
+// or name ensures the same vehicle always shows the same picture.
+function getVehicleImage(v) {
+    if (v.image_url) return v.image_url;
+
+    const type = (v.type || '').toLowerCase();
+    const name = (v.name || '').toLowerCase();
+
+    // Stable seed so the same vehicle always gets the same photo
+    const seed = v.id || (v.name || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+
+    const isVan = type.includes('van') || type.includes('minibus') || type.includes('minivan') ||
+                  type.includes('sprinter') || name.includes('hiace') || name.includes('van') ||
+                  name.includes('minibus') || name.includes('sprinter');
+
+    const isBus = type.includes('bus') || type.includes('coaster') ||
+                  name.includes('bus') || name.includes('coaster');
+
+    // loremflickr returns keyword-matched photos from Flickr; the lock= seed
+    // makes it deterministic so the same vehicle always shows the same image.
+    if (isVan)  return `https://loremflickr.com/400/300/safari,van,minibus?lock=${seed}`;
+    if (isBus)  return `https://loremflickr.com/400/300/safari,bus,coaster?lock=${seed}`;
+    // Default: safari 4WD / Land Cruiser / Jeep covers everything else
+    return `https://loremflickr.com/400/300/safari,landcruiser,jeep,4wd?lock=${seed}`;
+}
+
 // Load fleet
 async function loadFleet() {
     try {
@@ -91,22 +120,12 @@ async function loadFleet() {
         allVehicles = result.data || [];
         
         const grid = document.getElementById('fleetGrid');
-        grid.innerHTML = allVehicles.map((v, index) => {
-            // Use different images for each vehicle
-            const images = [
-                'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=400&h=300&fit=crop',
-                'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=400&h=300&fit=crop',
-                'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400&h=300&fit=crop',
-                'https://images.unsplash.com/photo-1580274455191-1c62238fa333?w=400&h=300&fit=crop',
-                'https://images.unsplash.com/photo-1503376763036-0661206c2c31?w=400&h=300&fit=crop',
-                'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=400&h=300&fit=crop'
-            ];
-            
-            const imageUrl = v.image_url || images[index % images.length];
+        grid.innerHTML = allVehicles.map(v => {
+            const imageUrl = getVehicleImage(v);
             
             return `
                 <div class="vehicle-card">
-                    <img src="${imageUrl}" alt="${v.name}" class="vehicle-image" onerror="this.src='https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=400&h=300&fit=crop'">
+                    <img src="${imageUrl}" alt="${v.name}" class="vehicle-image" onerror="this.src='https://loremflickr.com/400/300/safari,landcruiser?lock=0'">
                     <div class="vehicle-info">
                         <h3>${v.name}</h3>
                         <p class="vehicle-type"><i data-lucide="truck"></i> ${v.type}</p>

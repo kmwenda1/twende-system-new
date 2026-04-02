@@ -83,9 +83,30 @@ async function loadDashboard() {
     }
 }
 
+// Curated Unsplash direct CDN photo IDs per vehicle category.
+// These are permanent stable links — no API key required.
+const VEHICLE_PHOTOS = {
+    fourwd: [
+        'photo-1519641471654-76ce0107ad1b', // safari Land Cruiser in grass
+        'photo-1532236204992-f5e85c024202', // 4WD offroad
+        'photo-1574375927938-d5a98e8ffe85', // safari jeep on dusty road
+        'photo-1567473165935-bce4dd1b1c0b', // Land Rover Defender
+        'photo-1516026672322-bc52d61a55d5', // safari truck at sunset
+    ],
+    van: [
+        'photo-1544620347-c4fd4a3d5957', // white minibus/van
+        'photo-1494976388531-d1058494cdd8', // VW-style van
+        'photo-1558618047-3c8c4c4c4c4c', // HiAce-style minibus
+    ],
+    bus: [
+        'photo-1570125909232-eb263c188f7e', // coach bus on road
+        'photo-1464375117522-1311d19bc8a4', // touring bus
+    ],
+};
+
 // Return a safari-appropriate image URL based on the vehicle type and name.
 // If the vehicle has an image_url stored in the database, that takes priority.
-// Otherwise the Unsplash source API is used with curated keywords so that the
+// Otherwise a curated set of direct Unsplash CDN links is used so that the
 // correct vehicle category is always shown. A seed derived from the vehicle ID
 // or name ensures the same vehicle always shows the same picture.
 function getVehicleImage(v) {
@@ -94,8 +115,8 @@ function getVehicleImage(v) {
     const type = (v.type || '').toLowerCase();
     const name = (v.name || '').toLowerCase();
 
-    // Stable seed so the same vehicle always gets the same photo
-    const seed = v.id || (v.name || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+    // Stable numeric seed so the same vehicle always gets the same photo
+    const seed = v.id ? Number(v.id) : (v.name || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
 
     const isVan = type.includes('van') || type.includes('minibus') || type.includes('minivan') ||
                   type.includes('sprinter') || name.includes('hiace') || name.includes('van') ||
@@ -104,12 +125,13 @@ function getVehicleImage(v) {
     const isBus = type.includes('bus') || type.includes('coaster') ||
                   name.includes('bus') || name.includes('coaster');
 
-    // Unsplash source API returns high-quality, curated vehicle photos.
-    // The sig= seed makes it deterministic so the same vehicle always shows the same image.
-    if (isVan)  return `https://source.unsplash.com/400x300/?minibus,van,safari-van&sig=${seed}`;
-    if (isBus)  return `https://source.unsplash.com/400x300/?bus,coaster,tourist-bus&sig=${seed}`;
-    // Default: safari 4WD / Land Cruiser / Jeep covers everything else
-    return `https://source.unsplash.com/400x300/?land-cruiser,4wd,safari-vehicle&sig=${seed}`;
+    let photos;
+    if (isVan) photos = VEHICLE_PHOTOS.van;
+    else if (isBus) photos = VEHICLE_PHOTOS.bus;
+    else photos = VEHICLE_PHOTOS.fourwd;
+
+    const photoId = photos[seed % photos.length];
+    return `https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=400&h=300&q=80`;
 }
 
 // Load fleet
@@ -125,7 +147,7 @@ async function loadFleet() {
             
             return `
                 <div class="vehicle-card">
-                    <img src="${imageUrl}" alt="${v.name}" class="vehicle-image" onerror="this.src='https://loremflickr.com/400/300/safari,landcruiser?lock=0'">
+                    <img src="${imageUrl}" alt="${v.name}" class="vehicle-image" onerror="this.onerror=null;this.src='https://picsum.photos/seed/${v.id || 0}/400/300'">
                     <div class="vehicle-info">
                         <h3>${v.name}</h3>
                         <p class="vehicle-type"><i data-lucide="truck"></i> ${v.type}</p>

@@ -83,6 +83,58 @@ async function loadDashboard() {
     }
 }
 
+// Return a safari-appropriate image URL based on the vehicle type and name.
+// If the vehicle has an image_url stored in the database, that takes priority.
+// Otherwise, type/name keywords are matched to curated image sets. A simple
+// hash of the vehicle name ensures the same vehicle always gets the same image.
+function getVehicleImage(v) {
+    if (v.image_url) return v.image_url;
+
+    const type = (v.type || '').toLowerCase();
+    const name = (v.name || '').toLowerCase();
+
+    // Consistent index: same vehicle always picks the same image from its set
+    const hash = (v.name || String(v.id || '')).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+
+    // Safari 4WD / Land Cruiser / Jeep / SUV
+    const images4WD = [
+        'https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop',
+        'https://images.unsplash.com/photo-1504215680853-026ed2a45def?w=400&h=300&fit=crop',
+        'https://images.unsplash.com/photo-1563720223185-11003d516935?w=400&h=300&fit=crop',
+        'https://images.unsplash.com/photo-1464219789935-c2d9d9aba644?w=400&h=300&fit=crop'
+    ];
+
+    // Safari van / minibus / minivan (e.g. Toyota Hiace, Sprinter)
+    const imagesVan = [
+        'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
+        'https://images.unsplash.com/photo-1570538522009-5c8f00c5041f?w=400&h=300&fit=crop',
+        'https://images.unsplash.com/photo-1532246700734-9adb14ab5b7d?w=400&h=300&fit=crop'
+    ];
+
+    // Bus / Coaster
+    const imagesBus = [
+        'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=400&h=300&fit=crop',
+        'https://images.unsplash.com/photo-1464219789935-c2d9d9aba644?w=400&h=300&fit=crop'
+    ];
+
+    const is4WD = type.includes('4x4') || type.includes('4wd') || type.includes('suv') ||
+                  type.includes('jeep') || type.includes('land cruiser') || type.includes('safari') ||
+                  name.includes('cruiser') || name.includes('jeep') || name.includes('safari') ||
+                  name.includes('prado') || name.includes('ranger') || name.includes('hilux');
+
+    const isVan = type.includes('van') || type.includes('minibus') || type.includes('minivan') ||
+                  type.includes('sprinter') || name.includes('hiace') || name.includes('van') ||
+                  name.includes('minibus') || name.includes('sprinter');
+
+    const isBus = type.includes('bus') || type.includes('coaster') ||
+                  name.includes('bus') || name.includes('coaster');
+
+    if (isVan) return imagesVan[hash % imagesVan.length];
+    if (isBus) return imagesBus[hash % imagesBus.length];
+    // Default to safari 4WD (covers explicit 4WD match and everything else)
+    return images4WD[hash % images4WD.length];
+}
+
 // Load fleet
 async function loadFleet() {
     try {
@@ -91,22 +143,12 @@ async function loadFleet() {
         allVehicles = result.data || [];
         
         const grid = document.getElementById('fleetGrid');
-        grid.innerHTML = allVehicles.map((v, index) => {
-            // Use different images for each vehicle
-            const images = [
-                'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=400&h=300&fit=crop',
-                'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=400&h=300&fit=crop',
-                'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400&h=300&fit=crop',
-                'https://images.unsplash.com/photo-1580274455191-1c62238fa333?w=400&h=300&fit=crop',
-                'https://images.unsplash.com/photo-1503376763036-0661206c2c31?w=400&h=300&fit=crop',
-                'https://images.unsplash.com/photo-1544636331-e26879cd4d9b?w=400&h=300&fit=crop'
-            ];
-            
-            const imageUrl = v.image_url || images[index % images.length];
+        grid.innerHTML = allVehicles.map(v => {
+            const imageUrl = getVehicleImage(v);
             
             return `
                 <div class="vehicle-card">
-                    <img src="${imageUrl}" alt="${v.name}" class="vehicle-image" onerror="this.src='https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=400&h=300&fit=crop'">
+                    <img src="${imageUrl}" alt="${v.name}" class="vehicle-image" onerror="this.src='https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop'">
                     <div class="vehicle-info">
                         <h3>${v.name}</h3>
                         <p class="vehicle-type"><i data-lucide="truck"></i> ${v.type}</p>

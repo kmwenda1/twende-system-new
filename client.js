@@ -83,19 +83,20 @@ async function loadDashboard() {
     }
 }
 
-// Return a safari-appropriate image URL based on the vehicle type and name.
-// If the vehicle has an image_url stored in the database, that takes priority.
-// Otherwise a keyword-based image service (loremflickr) is used so that the
-// correct vehicle category is always shown. A seed derived from the vehicle ID
-// or name ensures the same vehicle always shows the same picture.
-function getVehicleImage(v) {
-    if (v.image_url) return v.image_url;
+// Escape HTML special characters to prevent XSS when inserting user data into HTML.
+function escapeHtml(str) {
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
+// Determine vehicle category and the matching Lucide icon name.
+function getVehicleCategory(v) {
     const type = (v.type || '').toLowerCase();
     const name = (v.name || '').toLowerCase();
-
-    // Stable seed so the same vehicle always gets the same photo
-    const seed = v.id || (v.name || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
 
     const isVan = type.includes('van') || type.includes('minibus') || type.includes('minivan') ||
                   type.includes('sprinter') || name.includes('hiace') || name.includes('van') ||
@@ -104,12 +105,24 @@ function getVehicleImage(v) {
     const isBus = type.includes('bus') || type.includes('coaster') ||
                   name.includes('bus') || name.includes('coaster');
 
-    // loremflickr returns keyword-matched photos from Flickr; the lock= seed
-    // makes it deterministic so the same vehicle always shows the same image.
-    if (isVan)  return `https://loremflickr.com/400/300/safari,van,minibus?lock=${seed}`;
-    if (isBus)  return `https://loremflickr.com/400/300/safari,bus,coaster?lock=${seed}`;
-    // Default: safari 4WD / Land Cruiser / Jeep covers everything else
-    return `https://loremflickr.com/400/300/safari,landcruiser,jeep,4wd?lock=${seed}`;
+    if (isBus) return { cat: 'bus', icon: 'bus' };
+    if (isVan) return { cat: 'van', icon: 'truck' };
+    return { cat: '4wd', icon: 'truck' };
+}
+
+// Build the image block HTML for a vehicle card.
+// When the vehicle has a photo URL stored in the DB, try to load it and fall
+// back to the CSS icon card on error.  Otherwise render the CSS card directly.
+function buildVehicleImageBlock(v, cat, icon) {
+    const safeCat   = escapeHtml(cat);
+    const safeIcon  = escapeHtml(icon);
+    const safeType  = escapeHtml(v.type);
+    if (v.image_url) {
+        const safeUrl = escapeHtml(v.image_url);
+        const fallback = `<div class="vehicle-image vehicle-img-${safeCat}" style="display:none"><i data-lucide="${safeIcon}" class="vehicle-img-icon"></i><span class="vehicle-img-label">${safeType}</span></div>`;
+        return `<img src="${safeUrl}" alt="${escapeHtml(v.name)}" class="vehicle-image" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">${fallback}`;
+    }
+    return `<div class="vehicle-image vehicle-img-${safeCat}"><i data-lucide="${safeIcon}" class="vehicle-img-icon"></i><span class="vehicle-img-label">${safeType}</span></div>`;
 }
 
 // Load fleet
@@ -121,14 +134,15 @@ async function loadFleet() {
         
         const grid = document.getElementById('fleetGrid');
         grid.innerHTML = allVehicles.map(v => {
-            const imageUrl = getVehicleImage(v);
+            const { cat, icon } = getVehicleCategory(v);
+            const imageBlock = buildVehicleImageBlock(v, cat, icon);
             
             return `
                 <div class="vehicle-card">
-                    <img src="${imageUrl}" alt="${v.name}" class="vehicle-image" onerror="this.src='https://loremflickr.com/400/300/safari,landcruiser?lock=0'">
+                    ${imageBlock}
                     <div class="vehicle-info">
-                        <h3>${v.name}</h3>
-                        <p class="vehicle-type"><i data-lucide="truck"></i> ${v.type}</p>
+                        <h3>${escapeHtml(v.name)}</h3>
+                        <p class="vehicle-type"><i data-lucide="truck"></i> ${escapeHtml(v.type)}</p>
                         <div class="vehicle-price">$${v.rate} <span>/ day</span></div>
                         <span class="status-badge status-${v.status?.toLowerCase()}">${v.status}</span>
                     </div>

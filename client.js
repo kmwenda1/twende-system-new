@@ -85,7 +85,7 @@ async function loadDashboard() {
 
 // Return a safari-appropriate image URL based on the vehicle type and name.
 // If the vehicle has an image_url stored in the database, that takes priority.
-// Otherwise a keyword-based image service (loremflickr) is used so that the
+// Otherwise the Unsplash source API is used with curated keywords so that the
 // correct vehicle category is always shown. A seed derived from the vehicle ID
 // or name ensures the same vehicle always shows the same picture.
 function getVehicleImage(v) {
@@ -104,12 +104,12 @@ function getVehicleImage(v) {
     const isBus = type.includes('bus') || type.includes('coaster') ||
                   name.includes('bus') || name.includes('coaster');
 
-    // loremflickr returns keyword-matched photos from Flickr; the lock= seed
-    // makes it deterministic so the same vehicle always shows the same image.
-    if (isVan)  return `https://loremflickr.com/400/300/safari,van,minibus?lock=${seed}`;
-    if (isBus)  return `https://loremflickr.com/400/300/safari,bus,coaster?lock=${seed}`;
+    // Unsplash source API returns high-quality, curated vehicle photos.
+    // The sig= seed makes it deterministic so the same vehicle always shows the same image.
+    if (isVan)  return `https://source.unsplash.com/400x300/?minibus,van,safari-van&sig=${seed}`;
+    if (isBus)  return `https://source.unsplash.com/400x300/?bus,coaster,tourist-bus&sig=${seed}`;
     // Default: safari 4WD / Land Cruiser / Jeep covers everything else
-    return `https://loremflickr.com/400/300/safari,landcruiser,jeep,4wd?lock=${seed}`;
+    return `https://source.unsplash.com/400x300/?land-cruiser,4wd,safari-vehicle&sig=${seed}`;
 }
 
 // Load fleet
